@@ -49,7 +49,7 @@ class ClienteAPI:
 
         for punto in puntos:
             params = {
-                "parameters": "T2M,WS10M,CLOUD_AMT",
+                "parameters": "T2M,WS10M,CLOUD_AMT,RH2M,T2M_MAX,T2M_MIN,CLOUD_OD,GWETROOT,TS,PRECTOTCORR,ALLSKY_SFC_SW_DWN,PS,T2MWET,ALLSKY_SFC_SW_DIFF,ALLSKY_SFC_LW_DWN",
                 "community": "RE",
                 "longitude": punto["lon"],
                 "latitude": punto["lat"],
@@ -69,7 +69,19 @@ class ClienteAPI:
                 "fecha": fechas,
                 "T2M": list(parametros["T2M"].values()),
                 "WS10M": list(parametros["WS10M"].values()),
-                "CLOUD_AMT": list(parametros["CLOUD_AMT"].values())
+                "CLOUD_AMT": list(parametros["CLOUD_AMT"].values()),
+                "RH2M": list(parametros["RH2M"].values()),
+                "T2M_MAX": list(parametros["T2M_MAX"].values()),
+                "T2M_MIN": list(parametros["T2M_MIN"].values()),
+                "CLOUD_OD": list(parametros["CLOUD_OD"].values()),
+                "GWETROOT": list(parametros["GWETROOT"].values()),
+                "TS": list(parametros["TS"].values()),
+                "PRECTOTCORR": list(parametros["PRECTOTCORR"].values()),
+                "ALLSKY_SFC_SW_DWN": list(parametros["ALLSKY_SFC_SW_DWN"].values()),
+                "PS": list(parametros["PS"].values()),
+                "T2MWET": list(parametros["T2MWET"].values()),
+                "ALLSKY_SFC_SW_DIFF": list(parametros["ALLSKY_SFC_SW_DIFF"].values()),
+                "ALLSKY_SFC_LW_DWN": list(parametros["ALLSKY_SFC_LW_DWN"].values())
             })
 
             df["fecha"] = df["fecha"].astype(str)
@@ -87,7 +99,23 @@ class ClienteAPI:
         df_final = pd.concat(lista_df, ignore_index=True)
 
         df_final = df_final.groupby(["Empresa", "Año", "Mes"], as_index=False)[
-            ["T2M", "WS10M", "CLOUD_AMT"]
+            [
+                "T2M",
+                "WS10M",
+                "CLOUD_AMT",
+                "RH2M",
+                "T2M_MAX",
+                "T2M_MIN",
+                "CLOUD_OD",
+                "GWETROOT",
+                "TS",
+                "PRECTOTCORR",
+                "ALLSKY_SFC_SW_DWN",
+                "PS",
+                "T2MWET",
+                "ALLSKY_SFC_SW_DIFF",
+                "ALLSKY_SFC_LW_DWN"
+            ]
         ].mean()
 
         return df_final

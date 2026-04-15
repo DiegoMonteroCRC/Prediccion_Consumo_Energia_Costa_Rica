@@ -1,5 +1,5 @@
 import os
-from src.api.cliente_api import ClienteAPI
+from src.api.cliente_api_clima import ClienteAPI
 from datos.gestor_datos import GestorDatos
 
 def main():
