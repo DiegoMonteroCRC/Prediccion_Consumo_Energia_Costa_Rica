@@ -47,7 +47,8 @@ class _ClienteAPIAresepBase(CargadorDatos):
 
     def _solicitar_json(self, anio = None):
         """Resuelve la URL correcta y valida la estructura JSON esperada."""
-        # Algunos servicios exponen un historico anual; otros responden todo en una sola llamada.
+        # Algunos servicios exponen un historico anual;
+        # otros responden t0d0 en una sola llamada.
         match self.anios:
             case None:
                 respuesta = requests.get(f"{self.url_base}{self.url}", timeout=60)
