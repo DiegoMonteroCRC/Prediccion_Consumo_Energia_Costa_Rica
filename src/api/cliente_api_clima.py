@@ -1,8 +1,12 @@
+"""Cliente NASA POWER para construir el historico mensual de clima por empresa."""
+
 import requests
 import pandas as pd
 
 
 class ClienteAPI:
+    """Consulta varias coordenadas por empresa y promedia su clima mensual."""
+
     def __init__(self):
         self.url = "https://power.larc.nasa.gov/api/temporal/monthly/point"
 
@@ -43,6 +47,8 @@ class ClienteAPI:
         }
 
     def obtener_datos_empresa(self, empresa, inicio, fin):
+        """Descarga puntos de una empresa y consolida un promedio mensual comun."""
+        # Varias coordenadas representan una misma empresa para evitar sesgo por un solo punto.
         empresa = empresa.strip().upper()
         puntos = self.coordenadas[empresa]
         lista_df = []
@@ -86,7 +92,7 @@ class ClienteAPI:
 
             df["fecha"] = df["fecha"].astype(str)
 
-            # quitar el mes 13 que representa el acumulado/anual
+            # El mes 13 representa el acumulado anual y se excluye del historico mensual.
             df = df[df["fecha"].str[-2:] != "13"]
 
             df["fecha"] = pd.to_datetime(df["fecha"], format="%Y%m")
@@ -97,6 +103,7 @@ class ClienteAPI:
             lista_df.append(df)
 
         df_final = pd.concat(lista_df, ignore_index=True)
+        # El promedio final resume todos los puntos en una sola observacion empresa-mes.
 
         df_final = df_final.groupby(["Empresa", "Año", "Mes"], as_index=False)[
             [
@@ -121,6 +128,7 @@ class ClienteAPI:
         return df_final
 
     def obtener_todas_empresas(self, empresas, inicio, fin):
+        """Itera empresa por empresa para dejar trazabilidad de la descarga."""
         lista_empresas = []
 
         total = len(empresas)

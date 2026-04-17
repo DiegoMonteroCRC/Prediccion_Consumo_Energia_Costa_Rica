@@ -1,6 +1,6 @@
 import os
 from src.api.cliente_api_clima import ClienteAPI
-from datos.gestor_datos import GestorDatos
+from datos.gestor_datos_aresep_clima import GestorDatos
 
 def main():
     ruta_clima = "../data/raw/api/clima_nasa_2020_2025.csv"
@@ -23,7 +23,19 @@ def main():
         print("No existe el archivo de clima. Descargando desde la API")
 
         cliente = ClienteAPI()
-        df_clima = cliente.obtener_todas_empresas(empresas, "2020", "2025")
+        df_clima = cliente.obtener_todas_empresas(    ruta_clima = "../data/raw/api/clima_nasa_2020_2025.csv",
+
+    empresas = [
+        "CNFL",
+        "COOPESANTOS",
+        "COOPELESCA",
+        "COOPEGUANACASTE",
+        "COOPEALFARORUIZ",
+        "ESPH",
+        "JASEC",
+        "ICE"
+    ]
+)
 
         print("\nDatos de clima descargados:")
         print(df_clima.head())
