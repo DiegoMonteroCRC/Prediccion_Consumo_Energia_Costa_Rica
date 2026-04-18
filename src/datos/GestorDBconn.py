@@ -15,14 +15,62 @@ class GestorDBconn:
 
     def __init__(self, database=None, user=None, password=None, host=None, port=None):
         # La configuracion prioriza argumentos y luego variables de entorno para no fijar credenciales.
-        self.database = database or os.getenv("PGDATABASE", "DW_Energia_ML")
-        self.user = user or os.getenv("PGUSER", "postgres")
-        self.password = password or os.getenv("PGPASSWORD", "")
-        self.host = host or os.getenv("PGHOST", "localhost")
-        self.port = port or os.getenv("PGPORT", "5432")
-        self.conn = None
+        self._database = database or os.getenv("PGDATABASE", "DW_Energia_ML")
+        self._user = user or os.getenv("PGUSER", "postgres")
+        self._password = password or os.getenv("PGPASSWORD", "")
+        self._host = host or os.getenv("PGHOST", "localhost")
+        self._port = port or os.getenv("PGPORT", "5432")
+        self._conn = None
 
-    def conectar(self):
+    @property
+    def database(self):
+        return self._database
+
+    @database.setter
+    def database(self, value):
+        self._database = value
+
+    @property
+    def user(self):
+        return self._user
+
+    @user.setter
+    def user(self, value):
+        self._user = value
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        self._password = value
+
+    @property
+    def host(self):
+        return self._host
+
+    @host.setter
+    def host(self, value):
+        self._host = value
+
+    @property
+    def port(self):
+        return self._port
+
+    @port.setter
+    def port(self, value):
+        self._port = value
+
+    @property
+    def conn(self):
+        return self._conn
+
+    @conn.setter
+    def conn(self, value):
+        self._conn = value
+
+    def _conectar(self):
         """Abre la conexion solo cuando se necesita por primera vez."""
         if psycopg2 is None:
             raise ImportError(
@@ -41,14 +89,14 @@ class GestorDBconn:
 
         return self.conn
 
-    def cerrar(self):
+    def _cerrar(self):
         if self.conn is not None and self.conn.closed == 0:
             self.conn.close()
         self.conn = None
 
-    def ejecutar(self, query, params=None, commit=False):
+    def _ejecutar(self, query, params=None, commit=False):
         """Ejecuta SQL sin retorno tabular y controla commit/rollback."""
-        conn = self.conectar()
+        conn = self._conectar()
         try:
             with conn.cursor() as cursor:
                 cursor.execute(query, params)
@@ -58,25 +106,25 @@ class GestorDBconn:
             conn.rollback()
             raise
 
-    def consultar(self, query, params=None):
+    def _consultar(self, query, params=None):
         """Ejecuta un SELECT y devuelve el resultado como DataFrame."""
-        conn = self.conectar()
+        conn = self._conectar()
         with conn.cursor() as cursor:
             cursor.execute(query, params)
             columnas = [desc[0] for desc in cursor.description]
             datos = cursor.fetchall()
         return pd.DataFrame(datos, columns=columnas)
 
-    def ejecutar_funcion(self, nombre_funcion, params=None, schema="public", multiple_rows=False, commit=False):
+    def _ejecutar_funcion(self, nombre_funcion, params=None, schema="public", multiple_rows=False, commit=False):
         """Invoca funciones SQL del proyecto y adapta su salida a pandas/dict."""
         # Las funciones se consumen como SELECT para recuperar su confirmacion de carga.
         params = params or ()
         placeholders = ", ".join(["%s"] * len(params))
         query = f'SELECT * FROM "{schema}"."{nombre_funcion}"({placeholders});'
-        resultado = self.consultar(query, params)
+        resultado = self._consultar(query, params)
 
         if commit:
-            self.conectar().commit()
+            self._conectar().commit()
 
         if multiple_rows:
             return resultado
@@ -87,10 +135,10 @@ class GestorDBconn:
         return resultado.iloc[0].to_dict()
 
     def __enter__(self):
-        self.conectar()
+        self._conectar()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None and self.conn is not None and self.conn.closed == 0:
             self.conn.rollback()
-        self.cerrar()
+        self._cerrar()

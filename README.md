@@ -40,6 +40,7 @@ El flujo principal toma fuentes de tarifas electricas, clima, centrales electric
   - distribucion electrica
   - precios medios
   - centrales electricas
+  - zonas de concesion por operador
   - hidrocarburos
 
 ### 2. Limpieza y unificacion
@@ -182,7 +183,7 @@ Secuencia resumida:
 3. extrae datos crudos desde ARESEP
 4. construye datasets derivados de clima y medios
 5. prepara y limpia cada dominio segun el flujo de notebooks
-6. carga cada dominio a su tabla staging
+6. carga cada dominio a su tabla staging, incluyendo zonas
 7. ejecuta `cargar_a_fact_dim()` para poblar dimensiones y hechos
 
 ```mermaid
@@ -190,23 +191,27 @@ flowchart TD
     A["ETL_main.py"] --> B["clear_staging()"]
     B --> C["etl_catalogos()"]
     C --> D["ClienteAPI ARESEP"]
-    D --> E["GestorDatos.procesar_todo()"]
-    E --> F["preparar_hidrocarburos()"]
-    E --> G["preparar_centro()"]
-    E --> H["preparar_distribucion()"]
-    E --> I["preparar_aresep_medios()"]
-    E --> J["preparar_clima()"]
-    F --> K["etl_stg_hidrocarburos()"]
-    G --> L["etl_stg_centro()"]
-    H --> M["etl_stg_distribucion()"]
-    I --> N["etl_stg_aresep_medios()"]
-    J --> O["etl_stg_clima_nasa()"]
-    K --> P["cargar_a_fact_dim()"]
-    L --> P
-    M --> P
-    N --> P
-    O --> P
-    P --> Q["Fact_Dim"]
+    D --> E["DataFrames ARESEP crudos"]
+    C --> F["GestorDatos.procesar_todo()"]
+    E --> G["preparar_hidrocarburos()"]
+    E --> H["preparar_centro()"]
+    E --> I["preparar_zonas()"]
+    E --> J["preparar_distribucion()"]
+    F --> K["preparar_aresep_medios()"]
+    F --> L["preparar_clima()"]
+    G --> M["etl_stg_hidrocarburos()"]
+    H --> N["etl_stg_centro()"]
+    I --> O["etl_stg_zonas()"]
+    J --> P["etl_stg_distribucion()"]
+    K --> Q["etl_stg_aresep_medios()"]
+    L --> R["etl_stg_clima_nasa()"]
+    M --> S["cargar_a_fact_dim()"]
+    N --> S
+    O --> S
+    P --> S
+    Q --> S
+    R --> S
+    S --> T["Fact_Dim"]
 ```
 
 ### Flujo de limpieza reproducido desde notebooks
@@ -221,6 +226,9 @@ Los notebooks sirven como referencia funcional del tratamiento previo al staging
 
 - `EDA_Centrales.ipynb`
   revisa el catalogo geografico y transforma coordenadas
+
+- `EDA_Zonas.ipynb`
+  separa el tipo de geometria desde la WKT y deja el layout final usado por `stg_zonas`
 
 - `EDA_Medios.ipynb`
   revisa precios medios y su consistencia mensual
@@ -250,7 +258,8 @@ Prediccion_Consumo_Energia_Costa_Rica/
 |   |-- EDA_Clima.ipynb
 |   |-- EDA_Dist.ipynb
 |   |-- EDA_HC.ipynb
-|   `-- EDA_Medios.ipynb
+|   |-- EDA_Medios.ipynb
+|   `-- EDA_Zonas.ipynb
 `-- src/
     |-- ETL_main.py
     |-- main.py
@@ -275,7 +284,8 @@ Prediccion_Consumo_Energia_Costa_Rica/
     |       |-- StgAresepMedios.py
     |       |-- StgCentro.py
     |       |-- StgDistribucion.py
-    |       `-- StgHidrocarburos.py
+    |       |-- StgHidrocarburos.py
+    |       `-- StgZonasConcesion.py
     `-- eda/
         `-- ProcesadorEDA.py
 ```
@@ -313,6 +323,14 @@ erDiagram
     }
 
     catalogo_tarifas_precios_medios_variables {
+        string id
+        string name
+        string services
+        string availability
+        string description
+    }
+
+    catalogo_zonas_concesion_operador_variables {
         string id
         string name
         string services
@@ -362,6 +380,16 @@ erDiagram
         string provincia
         float coordenada_x
         float coordenada_y
+    }
+
+    stg_zonas {
+        int id_objecto
+        string operador
+        string descripcion
+        float area
+        string coordenadas
+        string tipo_geometria
+        int srid
     }
 
     stg_distribucion {
@@ -454,6 +482,24 @@ erDiagram
         bool rige
     }
 
+    dim_zona_concesion {
+        bigint zona_key PK
+        int id_objecto
+        string operador
+        string descripcion
+        float area
+        string coordenadas_wkt
+        string tipo_geometria
+        int srid
+    }
+
+    bridge_empresa_zona {
+        bigint bridge_empresa_zona_key PK
+        bigint empresa_key FK
+        bigint zona_key FK
+        string fuente_vinculo
+    }
+
     fact_clima_mensual {
         bigint fact_clima_key PK
         bigint tiempo_key FK
@@ -506,6 +552,8 @@ erDiagram
     dim_tiempo ||--o{ fact_hidrocarburos : fecha
     dim_producto_hidrocarburo ||--o{ fact_hidrocarburos : producto
     dim_resolucion_hidrocarburo ||--o{ fact_hidrocarburos : resolucion
+    dim_empresa ||--o{ bridge_empresa_zona : empresa
+    dim_zona_concesion ||--o{ bridge_empresa_zona : zona
 ```
 
 ## Scripts principales

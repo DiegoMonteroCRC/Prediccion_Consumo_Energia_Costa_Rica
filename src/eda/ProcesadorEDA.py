@@ -269,3 +269,44 @@ class ProcesadorEDA(CargadorDatos):
             self.df[f"{date_col}_year"] = self.df[date_col].dt.year
             self.df[f"{date_col}_month"] = self.df[date_col].dt.month
         return self._chain_response(self.df, chain)
+
+    def split_col(
+            self,
+            columna: str,
+            old_col: str = None,
+            new_col: str = None,
+            extract_index: int = 0,
+            rm=True,
+            chain: bool = True
+    ):
+        if columna not in self.df.columns:
+            raise ValueError(f"La columna '{columna}' no existe en el DataFrame.")
+
+        partes = self.df[columna].fillna("").apply(lambda x: str(x).split())
+
+        n_col = []
+        o_col = []
+
+        for row in partes:
+            if not row:
+                n_col.append(None)
+                o_col.append(None)
+                continue
+
+            if extract_index >= len(row) or extract_index < -len(row):
+                n_col.append(None)
+                o_col.append(" ".join(row))
+                continue
+            fila = row.copy()
+            valor = fila.pop(extract_index)
+            n_col.append(valor)
+            o_col.append(" ".join(fila) if row else None)
+
+        self.df[new_col or f"New_col_{columna}"] = n_col
+        if old_col is not None:
+            self.df[old_col or f"Old_col_{columna}"] = o_col
+
+        if rm:
+            self.rm_col(columna, axis=1)
+
+        return self._chain_response(self.df, chain)

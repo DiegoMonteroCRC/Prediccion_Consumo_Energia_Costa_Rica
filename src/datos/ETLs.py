@@ -12,6 +12,7 @@ from src.datos.DataModels import (
     StgClimaNasa,
     StgDistribucion,
     StgHidrocarburos,
+    StgZonasConcesion,
 )
 from src.eda.ProcesadorEDA import ProcesadorEDA
 
@@ -49,7 +50,7 @@ class ETLs(ProcesadorEDA):
             f'VALUES ({", ".join(["%s"] * len(columnas_sql))})'
         )
 
-        conn = self.GestorDB.conectar()
+        conn = self.GestorDB._conectar()
         try:
             with conn.cursor() as cursor:
                 for i in range(0, len(registros), self.batch_size):
@@ -72,7 +73,7 @@ class ETLs(ProcesadorEDA):
 
             for params in registros:
                 try:
-                    self.GestorDB.ejecutar(query_fila, params=params, commit=True)
+                    self.GestorDB._ejecutar(query_fila, params=params, commit=True)
                     filas_exitosas += 1
                 except Exception as row_error:
                     filas_error += 1
@@ -118,6 +119,14 @@ class ETLs(ProcesadorEDA):
             chain
         )
 
+    def etl_stg_zonas(self, chain=True):
+        return self._ejecutar_etl_staging(
+            "fn_stg_insert_zonas",
+            StgZonasConcesion,
+            "stg_zonas",
+            chain
+        )
+
     def etl_stg_distribucion(self, chain=True):
         return self._ejecutar_etl_staging(
             "fn_stg_insert_distribucion",
@@ -140,12 +149,13 @@ class ETLs(ProcesadorEDA):
             "stg_hidrocarburos",
             "stg_distribucion",
             "stg_centro",
+            "stg_zonas",
             "stg_aresep_medios",
             "stg_clima_nasa",
         ]
 
         for tabla in tablas:
-            self.GestorDB.ejecutar(
+            self.GestorDB._ejecutar(
                 f'TRUNCATE TABLE "Staging".{tabla} RESTART IDENTITY;',
                 commit=True
             )
@@ -253,6 +263,29 @@ class ETLs(ProcesadorEDA):
                     "warnings_api_original",
                 ],
             ),
+            "aresep_zonas_concesion_operador_variables.csv": (
+                "catalogo_zonas_concesion_operador_variables",
+                [
+                    "ID",
+                    "Name",
+                    "Tags",
+                    "Services",
+                    "Availability",
+                    "Description",
+                    "Keywords",
+                    "Warnings_API_Original",
+                ],
+                [
+                    "id",
+                    "name",
+                    "tags",
+                    "services",
+                    "availability",
+                    "description",
+                    "keywords",
+                    "warnings_api_original",
+                ],
+            ),
             "nasa_power_parameters_name_es.csv": (
                 "catalogo_clima_variables",
                 [
@@ -282,7 +315,7 @@ class ETLs(ProcesadorEDA):
             ),
         }
 
-        conn = self.GestorDB.conectar()
+        conn = self.GestorDB._conectar()
         resumen = []
 
         with conn.cursor() as cursor:

@@ -319,3 +319,38 @@ class ClienteAPIHistoricoTarifasHidrocarburos(_ClienteAPIAresepBase):
         )
         self.df = df
         return self._chain_response(df, chain)
+
+
+
+class ClienteAPIZonasConcesionPorOperador(_ClienteAPIAresepBase):
+    """Descarga el catalogo geografico de zonas por concesion."""
+
+    def __init__(self):
+        super().__init__(
+            "Electricidad.svc/ObtenerInformacionZonasConcesionPorOperadorMapa",
+            None,
+            None
+        )
+
+    def obtener_datos(self, chain=True):
+        columnas = [
+            "id_Objecto",
+            "operador",
+            "descripcion",
+            "area",
+            "coordenadas"
+        ]
+
+        df = self._iter_dates(
+            columnas_ordenadas=columnas,
+            columnas_texto=[
+                "operador",
+                "descripcion"
+            ]
+        )
+
+        if "area" in df.columns:
+            df["area"] = pd.to_numeric(df["area"], errors="coerce")
+
+        self.df = df
+        return self._chain_response(df, chain)

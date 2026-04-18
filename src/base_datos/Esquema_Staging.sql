@@ -1,12 +1,7 @@
 CREATE SCHEMA IF NOT EXISTS "Staging";
 
-DROP TABLE IF EXISTS "Staging".stg_hidrocarburos;
-DROP TABLE IF EXISTS "Staging".stg_distribucion;
-DROP TABLE IF EXISTS "Staging".stg_centro;
-DROP TABLE IF EXISTS "Staging".stg_aresep_medios;
-DROP TABLE IF EXISTS "Staging".stg_clima_nasa;
 
-CREATE TABLE "Staging".stg_clima_nasa (
+CREATE TABLE IF NOT EXISTS "Staging".stg_clima_nasa (
     empresa                  VARCHAR(20),
     ano                      INTEGER,
     mes                      INTEGER,
@@ -27,7 +22,7 @@ CREATE TABLE "Staging".stg_clima_nasa (
     allsky_sfc_lw_dwn        DOUBLE PRECISION
 );
 
-CREATE TABLE "Staging".stg_aresep_medios (
+CREATE TABLE IF NOT EXISTS "Staging".stg_aresep_medios (
     mes                      INTEGER,
     ano                      INTEGER,
     empresa                  VARCHAR(25),
@@ -43,7 +38,7 @@ CREATE TABLE "Staging".stg_aresep_medios (
     trimestral               VARCHAR(10)
 );
 
-CREATE TABLE "Staging".stg_centro (
+CREATE TABLE IF NOT EXISTS "Staging".stg_centro (
     stg_centro_key           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_objecto               INTEGER,
     operador                 VARCHAR(100),
@@ -57,7 +52,19 @@ CREATE TABLE "Staging".stg_centro (
     coordenada_y             DOUBLE PRECISION
 );
 
-CREATE TABLE "Staging".stg_distribucion (
+CREATE TABLE IF NOT EXISTS "Staging".stg_zonas (
+    stg_zona_key             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_objecto               INTEGER UNIQUE,
+    operador                 VARCHAR(100),
+    descripcion              VARCHAR(200),
+    area                     NUMERIC(18,8),
+    coordenadas              TEXT,
+    tipo_geometria           VARCHAR(20),
+    srid                     INTEGER NOT NULL DEFAULT 5367,
+    fecha_carga              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "Staging".stg_distribucion (
     stg_distribucion_key     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_mes                   INTEGER,
     mes                      VARCHAR(15),
@@ -76,7 +83,7 @@ CREATE TABLE "Staging".stg_distribucion (
     fecha_publicacion        DATE
 );
 
-CREATE TABLE "Staging".stg_hidrocarburos (
+CREATE TABLE IF NOT EXISTS "Staging".stg_hidrocarburos (
     stg_hidrocarburos_key            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     numero_expediente                VARCHAR(50),
     numero_resolucion                VARCHAR(50),

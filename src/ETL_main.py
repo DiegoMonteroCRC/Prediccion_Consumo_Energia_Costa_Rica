@@ -10,9 +10,9 @@ import os
 from time import perf_counter
 
 os.environ["PGDATABASE"] = "DW_Energia_ML"
-os.environ["PGUSER"] = "<****>"
-os.environ["PGPASSWORD"] = "<****>"
-os.environ["PGHOST"] = "<****>"
+os.environ["PGUSER"] = "sa"
+os.environ["PGPASSWORD"] = "progra"
+os.environ["PGHOST"] = "34.136.178.175"
 os.environ["PGPORT"] = "5432"
 
 
@@ -27,6 +27,15 @@ CENTRO_COLUMNS = [
     "codigoDTA",
     "coordenadaX",
     "coordenadaY",
+]
+
+ZONAS_COLUMNS = [
+    "id_Objecto",
+    "operador",
+    "descripcion",
+    "area",
+    "coordenadas",
+    "tipo_geometria",
 ]
 
 DISTRIBUCION_COLUMNS = [
@@ -133,6 +142,13 @@ def preparar_centro(etl):
     return etl
 
 
+def preparar_zonas(etl):
+    """Replica el notebook de zonas agregando el tipo de geometria sin alterar la WKT."""
+    etl.split_col(columna="coordenadas", extract_index=0, new_col="tipo_geometria", rm=False)
+    etl.df = _ordenar_columnas_existentes(etl.df, ZONAS_COLUMNS)
+    return etl
+
+
 def preparar_distribucion(etl):
     """Conserva las columnas utiles del flujo de distribucion antes del staging."""
     columnas_sin_nulos = list(etl.col_nulls(reverse=True, chain=False).keys())
@@ -181,16 +197,18 @@ def main():
     # Estas APIs generan las fuentes crudas que luego se alinean con los notebooks de limpieza.
     print("[INICIO] Extrayendo datos ARESEP...")
     centrales = cliente_api_aresep.ClienteAPIInformacionCentralesElectricas()
+    zonas = cliente_api_aresep.ClienteAPIZonasConcesionPorOperador()
     distribucion = cliente_api_aresep.ClienteAPITarifasElectricidadDistribucion()
     hidrocarburos = cliente_api_aresep.ClienteAPIHistoricoTarifasHidrocarburos()
 
     cent = centrales.obtener_datos(chain=False)
+    zon = zonas.obtener_datos(chain=False)
     dist = distribucion.obtener_datos(chain=False)
     hc = hidrocarburos.obtener_datos(chain=False)
     inicio_etapa = checkpoint(inicio_total, inicio_etapa, "Extraccion ARESEP completada")
 
     print(
-        f"[DATA] Centro: {cent.shape} | Distribucion: {dist.shape} | Hidrocarburos: {hc.shape}"
+        f"[DATA] Centro: {cent.shape} | Zonas: {zon.shape} | Distribucion: {dist.shape} | Hidrocarburos: {hc.shape}"
     )
 
     # GestorDatos produce los datasets consolidados que alimentan clima y medios.
@@ -200,6 +218,7 @@ def main():
     etl_medios = ETLs()
     etl_distribucion = ETLs()
     etl_centrales = ETLs()
+    etl_zonas = ETLs()
 
     gestor = GestorDatos()
     df_aresep, df_clima, _ = gestor.procesar_todo()
@@ -214,6 +233,7 @@ def main():
     etl_medios.df = df_aresep
     etl_distribucion.df = dist
     etl_centrales.df = cent
+    etl_zonas.df = zon
 
     # Cada dominio se prepara por separado para respetar su grano antes del insert.
     print("[INICIO] Preparando y cargando hidrocarburos a staging...")
@@ -223,6 +243,10 @@ def main():
     print("[INICIO] Preparando y cargando centrales a staging...")
     preparar_centro(etl_centrales).etl_stg_centro()
     inicio_etapa = checkpoint(inicio_total, inicio_etapa, "Centro cargado a staging")
+
+    print("[INICIO] Preparando y cargando zonas a staging...")
+    preparar_zonas(etl_zonas).etl_stg_zonas()
+    inicio_etapa = checkpoint(inicio_total, inicio_etapa, "Zonas cargadas a staging")
 
     print("[INICIO] Preparando y cargando distribucion a staging...")
     preparar_distribucion(etl_distribucion).etl_stg_distribucion()
