@@ -10,9 +10,8 @@ CREATE SCHEMA IF NOT EXISTS "Catalogo";
 -- ============================================
 -- 1) aresep_centrales_electricas_variables.csv
 -- ============================================
-DROP TABLE IF EXISTS "Catalogo".catalogo_centrales_electricas_variables;
 
-CREATE TABLE "Catalogo".catalogo_centrales_electricas_variables (
+CREATE TABLE IF NOT EXISTS "Catalogo".catalogo_centrales_electricas_variables (
     id                        VARCHAR(100),
     name                      VARCHAR(255),
     tags                      TEXT,
@@ -26,9 +25,8 @@ CREATE TABLE "Catalogo".catalogo_centrales_electricas_variables (
 -- ============================================
 -- 2) aresep_hidrocarburos_variables.csv
 -- ============================================
-DROP TABLE IF EXISTS "Catalogo".catalogo_hidrocarburos_variables;
 
-CREATE TABLE "Catalogo".catalogo_hidrocarburos_variables (
+CREATE TABLE IF NOT EXISTS "Catalogo".catalogo_hidrocarburos_variables (
     id                        VARCHAR(100),
     name                      VARCHAR(255),
     tags                      TEXT,
@@ -42,9 +40,8 @@ CREATE TABLE "Catalogo".catalogo_hidrocarburos_variables (
 -- ============================================
 -- 3) aresep_tarifas_electricidad_distribucion_variables.csv
 -- ============================================
-DROP TABLE IF EXISTS "Catalogo".catalogo_tarifas_electricidad_distribucion_variables;
 
-CREATE TABLE "Catalogo".catalogo_tarifas_electricidad_distribucion_variables (
+CREATE TABLE IF NOT EXISTS "Catalogo".catalogo_tarifas_electricidad_distribucion_variables (
     id                        VARCHAR(100),
     name                      VARCHAR(255),
     tags                      TEXT,
@@ -58,9 +55,8 @@ CREATE TABLE "Catalogo".catalogo_tarifas_electricidad_distribucion_variables (
 -- ============================================
 -- 4) aresep_tarifas_precios_medios_variables.csv
 -- ============================================
-DROP TABLE IF EXISTS "Catalogo".catalogo_tarifas_precios_medios_variables;
 
-CREATE TABLE "Catalogo".catalogo_tarifas_precios_medios_variables (
+CREATE TABLE IF NOT EXISTS "Catalogo".catalogo_tarifas_precios_medios_variables (
     id                        VARCHAR(100),
     name                      VARCHAR(255),
     tags                      TEXT,
@@ -74,9 +70,8 @@ CREATE TABLE "Catalogo".catalogo_tarifas_precios_medios_variables (
 -- ============================================
 -- 5) nasa_power_parameters_name_es.csv
 -- ============================================
-DROP TABLE IF EXISTS "Catalogo".catalogo_clima_variables;
 
-CREATE TABLE "Catalogo".catalogo_clima_variables (
+CREATE TABLE IF NOT EXISTS "Catalogo".catalogo_clima_variables (
     id                        VARCHAR(100),
     name_es                   VARCHAR(255),
     name_en                   VARCHAR(255),
@@ -88,3 +83,15 @@ CREATE TABLE "Catalogo".catalogo_clima_variables (
     keywords                  TEXT,
     warnings                  TEXT
 );
+
+CREATE TABLE IF NOT EXISTS "Catalogo".catalogo_zonas_concesion_operador_variables (
+    id                        VARCHAR(100),
+    name                      VARCHAR(255),
+    tags                      TEXT,
+    services                  VARCHAR(100),
+    availability              VARCHAR(100),
+    description               TEXT,
+    keywords                  TEXT,
+    warnings_api_original     TEXT
+);
+

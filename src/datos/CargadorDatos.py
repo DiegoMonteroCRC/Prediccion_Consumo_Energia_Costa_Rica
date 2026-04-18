@@ -65,13 +65,13 @@ class CargadorDatos:
     def sql_table_to_df(self, nombre_tabla: str, schema="public", chain=True):
         """Trae una tabla SQL completa para reutilizarla como DataFrame."""
         query = f'SELECT * FROM "{schema}"."{nombre_tabla}";'
-        self.__df = self.GestorDB.consultar(query)
+        self.__df = self.GestorDB._consultar(query)
         return self._chain_response(self.param_set(), chain)
 
     def sql_view_to_df(self, nombre_vista: str, schema="public", chain=True):
         """Trae una vista SQL completa para analisis o reprocesamiento."""
         query = f'SELECT * FROM "{schema}"."{nombre_vista}";'
-        self.__df = self.GestorDB.consultar(query)
+        self.__df = self.GestorDB._consultar(query)
         return self._chain_response(self.param_set(), chain)
 
     def param_set(self) -> dict:
@@ -106,7 +106,7 @@ class CargadorDatos:
     def cargar_a_fact_dim(self, chain=True):
         """Dispara la carga del DW leyendo lo que ya existe en staging."""
         # La funcion SQL centraliza la logica de poblar dimensiones y hechos desde staging.
-        resultado = self.GestorDB.ejecutar_funcion(
+        resultado = self.GestorDB._ejecutar_funcion(
             "fn_cargar_a_fact_dim",
             schema="Fact_Dim",
             multiple_rows=True,

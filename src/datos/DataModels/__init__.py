@@ -5,3 +5,4 @@ from src.datos.DataModels.StgCentro import StgCentro
 from src.datos.DataModels.StgClimaNasa import StgClimaNasa
 from src.datos.DataModels.StgDistribucion import StgDistribucion
 from src.datos.DataModels.StgHidrocarburos import StgHidrocarburos
+from src.datos.DataModels.StgZonasConcesion import StgZonasConcesion

@@ -210,3 +210,66 @@ EXCEPTION
         RETURN QUERY SELECT FALSE, SQLERRM, 'stg_hidrocarburos', 0;
 END;
 $$;
+
+-- ============================================
+-- FUNCION STAGING PARA INSERTAR ZONAS
+-- Verifica e inserta SRID
+-- ============================================
+
+CREATE OR REPLACE FUNCTION "Staging".fn_stg_insert_zonas(
+    p_id_objecto INTEGER,
+    p_operador VARCHAR,
+    p_descripcion VARCHAR,
+    p_area NUMERIC,
+    p_coordenadas TEXT,
+    p_srid INTEGER DEFAULT 5367
+)
+RETURNS TABLE(ok BOOLEAN, mensaje TEXT, tabla TEXT, filas_afectadas INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_tipo_geometria VARCHAR(20);
+BEGIN
+    v_tipo_geometria :=
+        CASE
+            WHEN p_coordenadas ILIKE 'MULTIPOLYGON%' THEN 'MULTIPOLYGON'
+            WHEN p_coordenadas ILIKE 'POLYGON%' THEN 'POLYGON'
+            WHEN p_coordenadas ILIKE 'LINESTRING%' THEN 'LINESTRING'
+            WHEN p_coordenadas ILIKE 'POINT%' THEN 'POINT'
+            ELSE 'DESCONOCIDO'
+        END;
+
+    INSERT INTO "Staging".stg_zonas (
+        id_objecto,
+        operador,
+        descripcion,
+        area,
+        coordenadas,
+        tipo_geometria,
+        srid
+    )
+    VALUES (
+        p_id_objecto,
+        p_operador,
+        p_descripcion,
+        p_area,
+        p_coordenadas,
+        v_tipo_geometria,
+        COALESCE(p_srid, 5367)
+    )
+    ON CONFLICT (id_objecto) DO UPDATE
+    SET operador       = EXCLUDED.operador,
+        descripcion    = EXCLUDED.descripcion,
+        area           = EXCLUDED.area,
+        coordenadas    = EXCLUDED.coordenadas,
+        tipo_geometria = EXCLUDED.tipo_geometria,
+        srid           = EXCLUDED.srid,
+        fecha_carga    = CURRENT_TIMESTAMP;
+
+    RETURN QUERY SELECT TRUE, 'Fila insertada/actualizada correctamente', 'stg_zonas', 1;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN QUERY SELECT FALSE, SQLERRM, 'stg_zonas', 0;
+END;
+$$;

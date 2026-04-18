@@ -1,0 +1,5 @@
+ID,Name,Tags,Services,Availability,Description,Keywords,Warnings_API_Original
+operador,Operador,"official,aresep,zonas_concesion_operador,string",api,actual,Nombre del operador electrico asociado a la zona de concesion del mapa,"Operador,operador",
+descripcion,Descripcion de Zona de Concesion,"official,aresep,zonas_concesion_operador,string",api,actual,Descripcion de la zona de concesion reportada por ARESEP,"Descripcion,descripcion,zona de concesion",
+area,Area de Zona de Concesion,"official,aresep,zonas_concesion_operador,number",api,actual,Area de la zona de concesion dentro del mapa publicado por ARESEP,"Area,area,zonas de concesion",Formato sugerido: {0:n}
+coordenadas,Coordenadas de Zona,"official,aresep,zonas_concesion_operador,string",api,actual,Geometria o conjunto de coordenadas de la zona de concesion en el mapa,"Coordenadas,coordenadas,geometria,mapa",

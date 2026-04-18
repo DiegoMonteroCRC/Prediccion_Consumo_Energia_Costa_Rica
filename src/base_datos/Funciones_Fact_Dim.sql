@@ -372,5 +372,99 @@ BEGIN
     )
     SELECT COUNT(*) INTO v_count FROM inserted;
     RETURN QUERY SELECT 'fact_hidrocarburos', v_count, 'Carga de hecho hidrocarburos completada';
+
+-- ========================================
+-- CARGA DE ZONAS
+-- ========================================
+
+	WITH empresas AS (
+	    SELECT DISTINCT TRIM(operador) AS nombre_empresa
+	    FROM "Staging".stg_zonas
+	    WHERE operador IS NOT NULL
+	      AND TRIM(operador) <> ''
+	),
+	inserted AS (
+	    INSERT INTO "Fact_Dim".dim_empresa (nombre_empresa)
+	    SELECT nombre_empresa
+	    FROM empresas
+	    ON CONFLICT (nombre_empresa) DO NOTHING
+	    RETURNING 1
+	)
+	SELECT COUNT(*) INTO v_count FROM inserted;
+	RETURN QUERY SELECT 'dim_empresa_zonas', v_count, 'Carga de operadores de zonas completada';
+	
+	WITH zonas AS (
+	    SELECT DISTINCT
+	        id_objecto,
+	        operador,
+	        descripcion,
+	        area,
+	        coordenadas,
+	        tipo_geometria,
+	        COALESCE(srid, 5367) AS srid
+	    FROM "Staging".stg_zonas
+	    WHERE id_objecto IS NOT NULL
+	      AND coordenadas IS NOT NULL
+	),
+	inserted AS (
+	    INSERT INTO "Fact_Dim".dim_zona_concesion (
+	        id_objecto,
+	        operador,
+	        descripcion,
+	        area,
+	        coordenadas_wkt,
+	        tipo_geometria,
+	        srid
+	    )
+	    SELECT
+	        id_objecto,
+	        operador,
+	        descripcion,
+	        area,
+	        coordenadas,
+	        tipo_geometria,
+	        srid
+	    FROM zonas
+	    ON CONFLICT (id_objecto) DO UPDATE
+	    SET operador = EXCLUDED.operador,
+	        descripcion = EXCLUDED.descripcion,
+	        area = EXCLUDED.area,
+	        coordenadas_wkt = EXCLUDED.coordenadas_wkt,
+	        tipo_geometria = EXCLUDED.tipo_geometria,
+	        srid = EXCLUDED.srid
+	    RETURNING 1
+	)
+	SELECT COUNT(*) INTO v_count FROM inserted;
+	RETURN QUERY SELECT 'dim_zona_concesion', v_count, 'Carga de zonas completada';
+	
+	WITH relaciones AS (
+	    SELECT DISTINCT
+	        e.empresa_key,
+	        z.zona_key
+	    FROM "Fact_Dim".dim_zona_concesion z
+	    INNER JOIN "Fact_Dim".dim_empresa e
+	        ON UPPER(TRIM(e.nombre_empresa)) = UPPER(TRIM(z.operador))
+	),
+	inserted AS (
+	    INSERT INTO "Fact_Dim".bridge_empresa_zona (
+	        empresa_key,
+	        zona_key,
+	        fuente_vinculo
+	    )
+	    SELECT
+	        empresa_key,
+	        zona_key,
+	        'OPERADOR'
+	    FROM relaciones
+	    ON CONFLICT (empresa_key, zona_key) DO NOTHING
+	    RETURNING 1
+	)
+	SELECT COUNT(*) INTO v_count FROM inserted;
+	RETURN QUERY SELECT 'bridge_empresa_zona', v_count, 'Vinculo empresa-zona completado';
 END;
 $$;
+
+
+
+
+
