@@ -1,15 +1,21 @@
+"""Orquesta la unificacion historica entre ARESEP procesado y clima NASA."""
+
 import os
 import glob
 import pandas as pd
 
 
 class GestorDatos:
+    """Une fuentes mensuales y genera los CSV derivados usados por el proyecto."""
+
     def __init__(self):
         self.ruta_aresep = "../data/raw/aresep/*.csv"
         self.ruta_clima = "../data/raw/api/clima_nasa_2020_2025.csv"
         self.ruta_procesados = "../data/processed/"
 
     def cargar_aresep(self):
+        """Lee todos los CSV crudos de ARESEP y los concatena en un solo DataFrame."""
+        # La union temprana simplifica la validacion y la limpieza mensual posterior.
         archivos = glob.glob(self.ruta_aresep)
 
         if not archivos:
@@ -25,6 +31,8 @@ class GestorDatos:
         return df_aresep
 
     def limpiar_aresep(self, df):
+        """Normaliza columnas clave para que ARESEP pueda unirse con clima."""
+        # Aqui se homologa texto, meses y tipos antes del merge con NASA POWER.
         df = df.copy()
 
         df.columns = df.columns.str.strip()
@@ -94,6 +102,7 @@ class GestorDatos:
         return df_clima
 
     def unir_datos(self, df_aresep, df_clima):
+        """Construye el dataset final usando empresa, anio y mes como llave comun."""
         df_final = pd.merge(
             df_aresep,
             df_clima,
@@ -108,6 +117,7 @@ class GestorDatos:
         df.to_csv(ruta_salida, index=False, encoding="utf-8")
 
     def validar_total_nacional(self, df):
+        """Compara TOTAL NACIONAL contra la suma de empresas antes de limpiar."""
         df = df.copy()
 
         df.columns = df.columns.str.strip()
@@ -190,6 +200,8 @@ class GestorDatos:
         )
 
     def procesar_todo(self):
+        """Ejecuta la secuencia completa: validar, limpiar, unir y exportar."""
+        # Este metodo es la fuente de los CSV derivados usados por notebooks y ETL_main.
         df_aresep_original = self.cargar_aresep()
 
         # validar antes de eliminar TOTAL NACIONAL

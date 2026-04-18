@@ -1,0 +1,10 @@
+ID,Name,Tags,Services,Availability,Description,Keywords,Warnings_API_Original
+operador,Operador,"official,aresep,centrales_electricas,string",api,actual,Nombre del operador que administra las central eléctrica,"Operador,operador",
+centralElectrica,Central Eléctrica,"official,aresep,centrales_electricas,string",api,actual,Nombre de la central eléctrica,"Central Eléctrica,centralElectrica",
+fuente,Fuente de Energía Eléctrica,"official,aresep,centrales_electricas,string",api,actual,Fuente de energía con la que se abastece la central eléctrica,"Fuente de Energía Eléctrica,fuente",
+provincia,Provincia,"official,aresep,centrales_electricas,string",api,actual,Nombre de la provincia a la que pertenece la información geográfica,"Provincia,provincia",
+canton,Cantón,"official,aresep,centrales_electricas,string",api,actual,Nombre del cantón al que pertenece la información geográfica,"Cantón,canton",
+distrito,Distrito,"official,aresep,centrales_electricas,string",api,actual,Nombre distrito al que pertenece la información geográfica,"Distrito,distrito",
+codigoDTA,Código DTA,"official,aresep,centrales_electricas,number",api,actual,Código  de la división territorial administrativa en el mapa de Costa Rica,"Código DTA,codigoDTA",Formato sugerido: {0:n}
+Longitud,Coordenada en X,"official,aresep,centrales_electricas,number",api,actual,Longitud(Coordenada x en CRTM05 originalmente),"Longitud,X,coordenadaX",Formato sugerido: {0:n}
+Latitud,Coordenada en Y,"official,aresep,centrales_electricas,number",api,actual,Latitud(Coordenada y en CRTM05 originalmente),"Latitud,Y,coordenadaY",Formato sugerido: {0:n}

@@ -1,0 +1,13 @@
+ID,Name,Tags,Services,Availability,Description,Keywords,Warnings_API_Original
+id_Mes,Mes Cód.,"official,aresep,tarifas_electricidad_distribucion,string",api,2019-2026,Código del mes en que la tarifa fijada está vigente,"Mes Cód.,id_Mes",Campo oculto en el grid
+numeroExpediente,Expediente,"official,aresep,tarifas_electricidad_distribucion,string",api,2019-2026,Número de Expediente,"Expediente,numeroExpediente",
+numeroResolucion,Resolución,"official,aresep,tarifas_electricidad_distribucion,string",api,2019-2026,Número de Resolución,"Resolución,numeroResolucion",
+fechaPublicacion,Fecha de Publicación,"official,aresep,tarifas_electricidad_distribucion,date",api,2019-2026,Fecha de Publicación,"Fecha de Publicación,fechaPublicacion",Formato sugerido: {0:dd/MM/yyyy}
+mes,Mes,"official,aresep,tarifas_electricidad_distribucion,string",api,2019-2026,Descripción del mes en que la tarifa está vigente,"Mes,mes",
+anho,Año,"official,aresep,tarifas_electricidad_distribucion,string",api,2019-2026,Año en que la tarifa está vigente,"Año,anho",
+empresa,Empresa,"official,aresep,tarifas_electricidad_distribucion,string",api,2019-2026,Empresa a la que corresponde la tarifa fijada,"Empresa,empresa",
+tipoTarifa,Tipo Tarifa,"official,aresep,tarifas_electricidad_distribucion,string",api,2019-2026,Abreviatura del tipo de tarifa,"Tipo Tarifa,tipoTarifa",
+descripcionTarifa,Descripción Tarifa,"official,aresep,tarifas_electricidad_distribucion,string",api,2019-2026,Nombre del tipo de tarifa,"Descripción Tarifa,descripcionTarifa",
+bloque,Bloque,"official,aresep,tarifas_electricidad_distribucion,string",api,2019-2026,Bloque de consumo de energía al que se le fija la tarifa.,"Bloque,bloque",
+tarifaPromedio,Tarifa,"official,aresep,tarifas_electricidad_distribucion,number",api,2019-2026,"Monto promedio en colones por kWh, se refiere a la tarifa que se fija","Tarifa,tarifaPromedio",Formato sugerido: {0:n}
+pliego,Pliego,"official,aresep,tarifas_electricidad_distribucion,string",api,2019-2026,Pliego,"Pliego,pliego",

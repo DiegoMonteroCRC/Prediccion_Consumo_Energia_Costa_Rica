@@ -1,0 +1,14 @@
+ID,Name,Tags,Services,Availability,Description,Keywords,Warnings_API_Original
+mes,Mes,"official,aresep,tarifas_precios_medios,string",api,2019-2026,Descripción del mes en que el precio medio está vigente,"Mes,mes",
+anho,Año,"official,aresep,tarifas_precios_medios,number",api,2019-2026,Año en que el precio medio está vigente,"Año,anho",Formato sugerido: {0:0}
+empresa,Empresa,"official,aresep,tarifas_precios_medios,string",api,2019-2026,Empresa a la que corresponde el precio medio,"Empresa,empresa",
+tipoTarifa,Tarifa,"official,aresep,tarifas_precios_medios,string",api,2019-2026,Nombre del tipo de tarifa,"Tarifa,tipoTarifa",
+abonados,Abonados,"official,aresep,tarifas_precios_medios,number",api,2019-2026,Cantidad de abonados,"Abonados,abonados",Formato sugerido: {0:n}
+ventas,Ventas,"official,aresep,tarifas_precios_medios,number",api,2019-2026,Ventas,"Ventas,ventas",Formato sugerido: {0:n}
+ingresoSinCVG,Ingreso sin CVG,"official,aresep,tarifas_precios_medios,number",api,2019-2026,Monto en colones del ingreso sin el efecto del CVG,"Ingreso sin CVG,ingresoSinCVG",Formato sugerido: {0:n}
+ingresoConCVG,Ingreso con CVG,"official,aresep,tarifas_precios_medios,number",api,2019-2026,Monto en colones del ingreso con el efecto del CVG,"Ingreso con CVG,ingresoConCVG",Formato sugerido: {0:n}
+precioMedioSinCVG,Precio Medio sin CVG,"official,aresep,tarifas_precios_medios,number",api,2019-2026,Monto en colones del precio medio sin CVG,"Precio Medio sin CVG,precioMedioSinCVG",Formato sugerido: {0:n}
+precioMedioConCVG,Precio Medio con CVG,"official,aresep,tarifas_precios_medios,number",api,2019-2026,Monto en colones del precio medio con CVG,"Precio Medio con CVG,precioMedioConCVG",Formato sugerido: {0:n}
+trimestre,Trimestre,"official,aresep,tarifas_precios_medios,string",api,2019-2026,Trimestre del precio medio con y sin CVG,"Trimestre,trimestre",
+sistema,Sistema,"official,aresep,tarifas_precios_medios,string",api,2019-2026,Sistema al que pertenece el precio medio con y sin CVG,"Sistema,sistema",
+trimestral,Trimestral,"official,aresep,tarifas_precios_medios,string",api,2019-2026,Código que relaciona año con trimestr,"Trimestral,trimestral",
