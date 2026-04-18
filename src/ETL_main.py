@@ -10,9 +10,9 @@ import os
 from time import perf_counter
 
 os.environ["PGDATABASE"] = "DW_Energia_ML"
-os.environ["PGUSER"] = "sa"
-os.environ["PGPASSWORD"] = "progra"
-os.environ["PGHOST"] = "34.136.178.175"
+os.environ["PGUSER"] = "<***>"
+os.environ["PGPASSWORD"] = "<***>>"
+os.environ["PGHOST"] = "<***>"
 os.environ["PGPORT"] = "5432"
 
 
