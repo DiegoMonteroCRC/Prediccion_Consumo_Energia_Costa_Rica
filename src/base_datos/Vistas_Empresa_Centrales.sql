@@ -2,11 +2,14 @@
 -- VISTAS ANALITICAS - EMPRESA / CENTRALES
 -- ============================================
 
+DROP VIEW IF EXISTS "Fact_Dim".vw_empresa_centrales_agregadas CASCADE;
+
 -- Consolida la relacion entre empresa y centrales electricas
 -- sin multiplicar filas en vistas de consumo mensual.
--- La normalizacion de alias sigue el criterio ya usado
--- en Funciones_Fact_Dim.sql para vincular operadores.
-CREATE OR REPLACE VIEW "Fact_Dim".vw_empresa_centrales_agregadas AS
+-- La vinculacion incluye tanto los puentes empresa-zona-central
+-- como las centrales que ya quedaron asociadas a una empresa
+-- dentro del hecho de clima mensual.
+CREATE VIEW "Fact_Dim".vw_empresa_centrales_agregadas AS
 WITH alias_empresa AS (
     SELECT *
     FROM (
@@ -36,9 +39,33 @@ empresa_base AS (
     FROM empresa_normalizada en
     LEFT JOIN "Fact_Dim".dim_empresa er
         ON er.nombre_empresa = en.empresa_relacionada
+),
+centrales_por_zona AS (
+    SELECT DISTINCT
+        bez.empresa_key,
+        bcz.central_key
+    FROM "Fact_Dim".bridge_empresa_zona bez
+    INNER JOIN "Fact_Dim".bridge_central_zona bcz
+        ON bcz.zona_key = bez.zona_key
+),
+centrales_por_clima AS (
+    SELECT DISTINCT
+        fc.empresa_key,
+        fc.central_key
+    FROM "Fact_Dim".fact_clima_mensual fc
+    WHERE fc.empresa_key IS NOT NULL
+      AND fc.central_key IS NOT NULL
+),
+empresa_central AS (
+    SELECT empresa_key, central_key
+    FROM centrales_por_zona
+    UNION
+    SELECT empresa_key, central_key
+    FROM centrales_por_clima
 )
 SELECT
     eb.empresa_canonica,
+    COUNT(DISTINCT ce.central_key) FILTER (WHERE ce.central_key IS NOT NULL) AS cantidad_centrales_asociadas,
     string_agg(DISTINCT ce.fuente, ' | ' ORDER BY ce.fuente)
         FILTER (WHERE ce.fuente IS NOT NULL) AS fuentes_electricas_agregadas,
     string_agg(DISTINCT ce.central_electrica, ' | ' ORDER BY ce.central_electrica)
@@ -58,12 +85,10 @@ SELECT
           AND u.coordenada_y IS NOT NULL
     ) AS coordenadas_xy_agregadas
 FROM empresa_base eb
-LEFT JOIN "Fact_Dim".bridge_empresa_zona bez
-    ON bez.empresa_key = eb.empresa_relacionada_key
-LEFT JOIN "Fact_Dim".bridge_central_zona bcz
-    ON bcz.zona_key = bez.zona_key
+LEFT JOIN empresa_central ec_rel
+    ON ec_rel.empresa_key = eb.empresa_relacionada_key
 LEFT JOIN "Fact_Dim".dim_central_electrica ce
-    ON ce.central_key = bcz.central_key
+    ON ce.central_key = ec_rel.central_key
 LEFT JOIN "Fact_Dim".dim_ubicacion u
     ON u.ubicacion_key = ce.ubicacion_key
 GROUP BY

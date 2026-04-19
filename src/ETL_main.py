@@ -1,9 +1,9 @@
 """Entrada principal del ETL operacional: limpia, carga staging y puebla el DW."""
 
-from src.datos.CargadorDatos import CargadorDatos
-from src.datos.ETLs import ETLs
-from src.api import cliente_api_aresep
-from src.datos.gestor_datos_aresep_clima import GestorDatos
+from datos.CargadorDatos import CargadorDatos
+from datos.ETLs import ETLs
+from api import cliente_api_aresep
+from datos.gestor_datos_aresep_clima import GestorDatos
 
 
 import os
@@ -11,10 +11,10 @@ from pathlib import Path
 from time import perf_counter
 
 os.environ["PGDATABASE"] = "DW_Energia_ML"
-os.environ["PGUSER"] = "<***>"
-os.environ["PGPASSWORD"] = "<***>"
-os.environ["PGHOST"] = "<***>"
-os.environ["PGPORT"] = "5433"
+os.environ["PGUSER"] = "sa"
+os.environ["PGPASSWORD"] = "progra"
+os.environ["PGHOST"] = "34.136.178.175"
+#os.environ["PGPORT"] = "5433"
 
 
 CENTRO_COLUMNS = [
@@ -101,7 +101,12 @@ ARESEP_MEDIOS_COLUMNS = [
 ]
 
 CLIMA_COLUMNS = [
+    "id_Objecto",
+    "centralElectrica",
+    "operador",
     "Empresa",
+    "coordenadaX",
+    "coordenadaY",
     "Año",
     "Mes",
     "T2M",
@@ -127,6 +132,9 @@ SQL_BOOTSTRAP_FILES = [
     "Esquema_Fact_Dim.sql",
     "Funciones_Staging.sql",
     "Funciones_Fact_Dim.sql",
+    "Vistas_Empresa_Centrales.sql",
+    "Vistas_Fact_Dim.sql",
+    "Vistas_Dataset_Final.sql",
 ]
 
 
@@ -153,6 +161,13 @@ def sincronizar_objetos_sql():
         ruta = base_sql / archivo
         print(f"[INICIO] Sincronizando SQL: {archivo}...")
         gestor._ejecutar_script_sql(ruta)
+
+
+def exportar_dataset_final_desde_dw():
+    """Exporta el dataset final desde la vista del DW al CSV procesado."""
+    cargador = CargadorDatos()
+    cargador.sql_view_to_df("vw_dataset_final_2020_2025", schema="Fact_Dim")
+    cargador.save_df("processed/dataset_final_2020_2025", chain=False)
 
 
 def preparar_centro(etl):
@@ -296,7 +311,11 @@ def main():
     # La ultima etapa SQL toma staging como fuente para poblar dimensiones y hechos.
     print("[INICIO] Poblando dimensiones y hechos...")
     CargadorDatos().cargar_a_fact_dim()
-    checkpoint(inicio_total, inicio_etapa, "Fact_Dim poblado")
+    inicio_etapa = checkpoint(inicio_total, inicio_etapa, "Fact_Dim poblado")
+
+    print("[INICIO] Exportando dataset final desde la vista del DW...")
+    exportar_dataset_final_desde_dw()
+    checkpoint(inicio_total, inicio_etapa, "Dataset final exportado desde DW")
 
     print("#" * 10, f"\nListo en {perf_counter() - inicio_total:.2f}s\n", "#" * 10)
 

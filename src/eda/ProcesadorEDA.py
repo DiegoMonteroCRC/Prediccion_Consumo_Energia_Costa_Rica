@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 
-from src.datos.CargadorDatos import CargadorDatos
+from datos.CargadorDatos import CargadorDatos
 
 
 class ProcesadorEDA(CargadorDatos):

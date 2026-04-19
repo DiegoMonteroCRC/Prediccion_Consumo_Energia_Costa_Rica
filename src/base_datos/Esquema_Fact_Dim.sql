@@ -93,11 +93,12 @@ CREATE TABLE IF NOT EXISTS "Fact_Dim".dim_resolucion_hidrocarburo (
 
 -- ============================================
 -- HECHO CLIMA MENSUAL
--- Grano: empresa + mes
+-- Grano: central + mes
 -- ============================================
 CREATE TABLE IF NOT EXISTS "Fact_Dim".fact_clima_mensual (
     fact_clima_key        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     tiempo_key            BIGINT NOT NULL REFERENCES "Fact_Dim".dim_tiempo(tiempo_key),
+    central_key           BIGINT NOT NULL REFERENCES "Fact_Dim".dim_central_electrica(central_key),
     empresa_key           BIGINT NOT NULL REFERENCES "Fact_Dim".dim_empresa(empresa_key),
 
     t2m                   NUMERIC(18,6),
@@ -116,8 +117,49 @@ CREATE TABLE IF NOT EXISTS "Fact_Dim".fact_clima_mensual (
     allsky_sfc_sw_diff    NUMERIC(18,6),
     allsky_sfc_lw_dwn     NUMERIC(18,6),
 
-    UNIQUE (tiempo_key, empresa_key)
+    UNIQUE (tiempo_key, central_key)
 );
+
+ALTER TABLE IF EXISTS "Fact_Dim".fact_clima_mensual
+    ADD COLUMN IF NOT EXISTS central_key BIGINT,
+    ADD COLUMN IF NOT EXISTS empresa_key BIGINT,
+    ADD COLUMN IF NOT EXISTS t2m NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS ws10m NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS cloud_amt NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS rh2m NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS t2m_max NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS t2m_min NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS cloud_od NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS gwetroot NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS ts NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS prectotcorr NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS allsky_sfc_sw_dwn NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS ps NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS t2mwet NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS allsky_sfc_sw_diff NUMERIC(18,6),
+    ADD COLUMN IF NOT EXISTS allsky_sfc_lw_dwn NUMERIC(18,6);
+
+ALTER TABLE IF EXISTS "Fact_Dim".fact_clima_mensual
+    DROP CONSTRAINT IF EXISTS fact_clima_mensual_tiempo_key_empresa_key_key;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_fact_clima_central_key'
+    ) THEN
+        ALTER TABLE "Fact_Dim".fact_clima_mensual
+            ADD CONSTRAINT fk_fact_clima_central_key
+            FOREIGN KEY (central_key)
+            REFERENCES "Fact_Dim".dim_central_electrica(central_key);
+    END IF;
+END;
+$$;
+
+DROP INDEX IF EXISTS idx_fact_clima_tiempo_empresa;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fact_clima_tiempo_central
+ON "Fact_Dim".fact_clima_mensual (tiempo_key, central_key);
 
 -- ============================================
 -- HECHO TARIFA ELECTRICIDAD
@@ -231,8 +273,8 @@ CREATE TABLE IF NOT EXISTS "Fact_Dim".bridge_central_zona (
 CREATE INDEX IF NOT EXISTS idx_dim_tiempo_anio_mes
 ON "Fact_Dim".dim_tiempo (anio, mes);
 
-CREATE INDEX IF NOT EXISTS idx_fact_clima_tiempo_empresa
-ON "Fact_Dim".fact_clima_mensual (tiempo_key, empresa_key);
+CREATE INDEX IF NOT EXISTS idx_fact_clima_tiempo_central
+ON "Fact_Dim".fact_clima_mensual (tiempo_key, central_key);
 
 CREATE INDEX IF NOT EXISTS idx_fact_tarifa_tiempo_empresa_tarifa
 ON "Fact_Dim".fact_tarifa_electricidad (tiempo_key, empresa_key, tarifa_key);

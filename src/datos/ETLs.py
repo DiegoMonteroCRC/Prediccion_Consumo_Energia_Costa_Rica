@@ -6,7 +6,7 @@ from dataclasses import fields
 import pandas as pd
 from psycopg2.extras import execute_values
 
-from src.datos.DataModels import (
+from datos.DataModels import (
     StgAresepMedios,
     StgCentro,
     StgClimaNasa,
@@ -14,7 +14,7 @@ from src.datos.DataModels import (
     StgHidrocarburos,
     StgZonasConcesion,
 )
-from src.eda.ProcesadorEDA import ProcesadorEDA
+from eda.ProcesadorEDA import ProcesadorEDA
 
 
 class ETLs(ProcesadorEDA):

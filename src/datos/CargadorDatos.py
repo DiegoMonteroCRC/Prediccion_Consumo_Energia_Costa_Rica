@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.datos.gestor_datos_aresep_clima import GestorDatos
-from src.api.cliente_api_clima import ClienteAPI
-from src.datos.GestorDBconn import GestorDBconn
+from datos.gestor_datos_aresep_clima import GestorDatos
+from api.cliente_api_clima import ClienteAPI
+from datos.GestorDBconn import GestorDBconn
 
 
 class CargadorDatos:

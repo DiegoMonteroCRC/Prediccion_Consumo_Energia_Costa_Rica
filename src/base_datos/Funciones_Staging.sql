@@ -1,5 +1,10 @@
 CREATE OR REPLACE FUNCTION "Staging".fn_stg_insert_clima_nasa(
+    p_id_objecto INTEGER,
+    p_central_electrica VARCHAR,
+    p_operador VARCHAR,
     p_empresa VARCHAR,
+    p_coordenada_x DOUBLE PRECISION,
+    p_coordenada_y DOUBLE PRECISION,
     p_ano INTEGER,
     p_mes INTEGER,
     p_t2m DOUBLE PRECISION,
@@ -23,12 +28,14 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
     INSERT INTO "Staging".stg_clima_nasa (
-        empresa, ano, mes, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
+        id_objecto, central_electrica, operador, empresa, coordenada_x, coordenada_y,
+        ano, mes, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
         cloud_od, gwetroot, ts, prectotcorr, allsky_sfc_sw_dwn, ps, t2mwet,
         allsky_sfc_sw_diff, allsky_sfc_lw_dwn
     )
     VALUES (
-        p_empresa, p_ano, p_mes, p_t2m, p_ws10m, p_cloud_amt, p_rh2m, p_t2m_max, p_t2m_min,
+        p_id_objecto, p_central_electrica, p_operador, p_empresa, p_coordenada_x, p_coordenada_y,
+        p_ano, p_mes, p_t2m, p_ws10m, p_cloud_amt, p_rh2m, p_t2m_max, p_t2m_min,
         p_cloud_od, p_gwetroot, p_ts, p_prectotcorr, p_allsky_sfc_sw_dwn, p_ps, p_t2mwet,
         p_allsky_sfc_sw_diff, p_allsky_sfc_lw_dwn
     );

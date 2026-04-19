@@ -1,182 +1,359 @@
-"""Orquesta la unificación histórica entre ARESEP procesado y clima NASA."""
+"""Clientes HTTP para las APIs de ARESEP usadas en el ETL."""
 
-import os
-import glob
 import pandas as pd
+import requests
 
-try:
-    from src.api.cliente_api_clima import ClienteAPI
-except ModuleNotFoundError:
-    from api.cliente_api_clima import ClienteAPI
+from datos.CargadorDatos import CargadorDatos
 
 
-class GestorDatos:
-    """Une fuentes mensuales y genera los CSV derivados usados por el proyecto."""
-
-    def __init__(self):
-        self.ruta_aresep = "../data/raw/aresep/*.csv"
-        self.ruta_clima = "../data/raw/api/clima_NASA_unificado_centrales_electricas_2020-2025.csv"
-        self.ruta_centro = "../data/processed/aresep_apis/Centro.csv"
-        self.ruta_procesados = "../data/processed/"
-        self.inicio_clima = "2020"
-        self.fin_clima = "2025"
-
-    def cargar_aresep(self):
-        archivos = glob.glob(self.ruta_aresep)
-        if not archivos:
-            raise FileNotFoundError("No se encontraron archivos CSV en ../data/raw/aresep/")
-
-        lista_df = []
-        for archivo in archivos:
-            df = pd.read_csv(archivo, encoding="utf-8")
-            lista_df.append(df)
-
-        return pd.concat(lista_df, ignore_index=True)
-
-    def limpiar_aresep(self, df):
-        df = df.copy()
-        df.columns = df.columns.str.strip()
-
-        if "Empresa" in df.columns:
-            df["Empresa"] = df["Empresa"].astype(str).str.strip().str.upper()
-
-        if "Tarifa" in df.columns:
-            df["Tarifa"] = df["Tarifa"].astype(str).str.strip().str.upper()
-
-        meses = {
-            "ENERO": 1,
-            "FEBRERO": 2,
-            "MARZO": 3,
-            "ABRIL": 4,
-            "MAYO": 5,
-            "JUNIO": 6,
-            "JULIO": 7,
-            "AGOSTO": 8,
-            "SETIEMBRE": 9,
-            "SEPTIEMBRE": 9,
-            "OCTUBRE": 10,
-            "NOVIEMBRE": 11,
-            "DICIEMBRE": 12,
-        }
-
-        if "Mes" in df.columns:
-            df["Mes"] = df["Mes"].astype(str).str.strip().str.upper()
-            df["Mes"] = df["Mes"].map(meses)
-
-        if "Año" in df.columns:
-            df["Año"] = pd.to_numeric(df["Año"], errors="coerce")
-
-        columnas_numericas = ["Ventas", "Ingreso con CVG", "Precio Medio con CVG"]
-        for col in columnas_numericas:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-
-        if "Empresa" in df.columns:
-            df = df[df["Empresa"] != "TOTAL NACIONAL"]
-
-        df = df.dropna(subset=["Año", "Mes", "Empresa"])
-        df["Año"] = df["Año"].astype(int)
-        df["Mes"] = df["Mes"].astype(int)
+def acomodar_dataframe(
+    df: pd.DataFrame,
+    columnas_ordenadas=None,
+    columnas_fecha=None,
+    columnas_texto=None,
+):
+    """Limpia orden, fechas y texto para dejar la respuesta lista para pandas/EDA."""
+    if df.empty:
+        if columnas_ordenadas:
+            return pd.DataFrame(columns=columnas_ordenadas)
         return df
 
-    def generar_clima_si_no_existe(self):
-        if os.path.exists(self.ruta_clima):
-            return
+    if columnas_texto:
+        for columna in columnas_texto:
+            if columna in df.columns:
+                df[columna] = df[columna].apply(
+                    lambda valor: valor.strip() if isinstance(valor, str) else valor
+                )
 
-        print("No existe el archivo de clima. Generándolo desde Centro.csv...")
-        cliente = ClienteAPI(ruta_centro=self.ruta_centro)
-        cliente.generar_csv_desde_centro(
-            inicio=self.inicio_clima,
-            fin=self.fin_clima,
-            ruta_salida=self.ruta_clima,
-        )
-        print(f"Archivo de clima generado en: {self.ruta_clima}")
+    if columnas_fecha:
+        for columna in columnas_fecha:
+            if columna in df.columns:
+                df[columna] = pd.to_datetime(df[columna], errors="coerce")
 
-    def cargar_clima(self):
-        self.generar_clima_si_no_existe()
+    if columnas_ordenadas:
+        columnas_existentes = [
+            columna for columna in columnas_ordenadas if columna in df.columns
+        ]
+        columnas_restantes = [
+            columna for columna in df.columns if columna not in columnas_existentes
+        ]
+        df = df[columnas_existentes + columnas_restantes]
 
-        if not os.path.exists(self.ruta_clima):
-            raise FileNotFoundError(f"No se encontró el archivo de clima en {self.ruta_clima}")
+    return df
 
-        df_clima = pd.read_csv(self.ruta_clima, encoding="utf-8")
-        df_clima.columns = df_clima.columns.str.strip()
-        df_clima["Empresa"] = df_clima["Empresa"].astype(str).str.strip().str.upper()
-        df_clima["Año"] = pd.to_numeric(df_clima["Año"], errors="coerce")
-        df_clima["Mes"] = pd.to_numeric(df_clima["Mes"], errors="coerce")
-        df_clima = df_clima.dropna(subset=["Empresa", "Año", "Mes"])
-        df_clima["Año"] = df_clima["Año"].astype(int)
-        df_clima["Mes"] = df_clima["Mes"].astype(int)
-        return df_clima
 
-    def unir_datos(self, df_aresep, df_clima):
-        return pd.merge(df_aresep, df_clima, on=["Empresa", "Año", "Mes"], how="left")
+class _ClienteAPIAresepBase(CargadorDatos):
+    """Base comun para pedir endpoints ARESEP y devolverlos como DataFrame."""
 
-    def guardar_csv(self, df, nombre_archivo):
-        os.makedirs(self.ruta_procesados, exist_ok=True)
-        ruta_salida = os.path.join(self.ruta_procesados, nombre_archivo)
-        df.to_csv(ruta_salida, index=False, encoding="utf-8")
-
-    def validar_total_nacional(self, df):
-        df = df.copy()
-        df.columns = df.columns.str.strip()
-        df["Empresa"] = df["Empresa"].astype(str).str.strip().str.upper()
-
-        if "Año" in df.columns:
-            df["Año"] = pd.to_numeric(df["Año"], errors="coerce")
-
-        if "Ingreso con CVG" in df.columns:
-            df["Ingreso con CVG"] = pd.to_numeric(df["Ingreso con CVG"], errors="coerce")
-
-        df = df.dropna(subset=["Año", "Empresa", "Ingreso con CVG"])
-        df_total = df[df["Empresa"] == "TOTAL NACIONAL"].copy()
-        df_empresas = df[df["Empresa"] != "TOTAL NACIONAL"].copy()
-
-        if df_total.empty:
-            print("\nNo existe TOTAL NACIONAL en los archivos.")
-            return
-
-        suma_empresas = (
-            df_empresas.groupby(["Año", "Mes"], as_index=False)["Ingreso con CVG"]
-            .sum()
-            .rename(columns={"Ingreso con CVG": "Ingreso_empresas"})
+    def __init__(self, url, fecha_inicio, fecha_final):
+        super().__init__()
+        self.none = None
+        self.url = url
+        self.url_base = "https://datos.aresep.go.cr/ws.datosabiertos/Services/IE/"
+        self.fecha_inicio = fecha_inicio
+        self.fecha_final = fecha_final
+        self.anios = (
+            self.fecha_final - self.fecha_inicio
+            if isinstance(self.fecha_inicio, int) and isinstance(self.fecha_final, int)
+            else self.none
         )
 
-        total_nacional = (
-            df_total.groupby(["Año", "Mes"], as_index=False)["Ingreso con CVG"]
-            .sum()
-            .rename(columns={"Ingreso con CVG": "Ingreso_total"})
+    def _solicitar_json(self, anio=None):
+        """Resuelve la URL correcta y valida la estructura JSON esperada."""
+        match self.anios:
+            case None:
+                respuesta = requests.get(f"{self.url_base}{self.url}", timeout=60)
+            case 0:
+                respuesta = requests.get(f"{self.url_base}{self.url}/{anio}", timeout=60)
+            case self.anios:
+                respuesta = requests.get(f"{self.url_base}{self.url}/{anio}", timeout=60)
+
+        respuesta.raise_for_status()
+        datos = respuesta.json()
+
+        if not isinstance(datos, dict):
+            raise ValueError("La respuesta de ARESEP no tiene la estructura esperada.")
+
+        metadata = datos.get("metadata", {})
+        if metadata.get("success") is False:
+            mensaje = metadata.get("message", "La API de ARESEP devolvio un error.")
+            raise ValueError(mensaje)
+
+        registros = datos.get("value", [])
+        if not isinstance(registros, list):
+            raise ValueError(
+                "La respuesta de ARESEP no contiene una lista de registros en 'value'."
+            )
+
+        return registros
+
+    def _iter_dates(self, *args, **kwargs):
+        """Concatena respuestas por anio cuando el endpoint expone historicos anuales."""
+        lista_registros = []
+        match self.anios:
+            case None:
+                registros = self._solicitar_json(self.anios)
+                df = pd.DataFrame(registros)
+                return acomodar_dataframe(df, *args, **kwargs)
+            case 0:
+                registros = self._solicitar_json(self.anios)
+                df = pd.DataFrame(registros)
+                return acomodar_dataframe(df, *args, **kwargs)
+            case self.anios:
+                if self.anios >= 0:
+                    for anio in range(self.fecha_inicio, self.fecha_final + 1):
+                        registros = self._solicitar_json(anio)
+                        df_raw = pd.DataFrame(registros)
+                        df = acomodar_dataframe(df_raw, *args, **kwargs)
+                        lista_registros.append(df)
+                    return pd.concat(lista_registros, ignore_index=False)
+
+
+class ClienteAPITarifasElectricidadDistribucion(_ClienteAPIAresepBase):
+    """Descarga el historico de distribucion electrica y lo ordena por columnas clave."""
+
+    def __init__(self):
+        super().__init__(
+            "TarifasElectricidad.svc/ObtenerTarifasElectricidadDistribucion",
+            2019,
+            2026,
         )
 
-        comparacion = pd.merge(suma_empresas, total_nacional, on=["Año", "Mes"], how="inner")
-        comparacion["Diferencia"] = comparacion["Ingreso_total"] - comparacion["Ingreso_empresas"]
-        comparacion["Diferencia_Millones"] = (comparacion["Diferencia"] / 1_000_000).round(2)
-        comparacion["Diferencia_Porcentual%"] = (
-            (comparacion["Diferencia"] / comparacion["Ingreso_total"]) * 100
-        ).round(2)
+    def obtener_datos(self, chain=True):
+        columnas = [
+            "id_Mes",
+            "mes",
+            "anho",
+            "fecha",
+            "empresa",
+            "tipoTarifa",
+            "descripcionTarifa",
+            "bloque",
+            "tarifaPromedio",
+            "tarifa",
+            "pliego",
+            "estructuraCostos",
+            "numeroExpediente",
+            "numeroResolucion",
+            "fechaPublicacion",
+        ]
 
-        comparacion_mostrar = comparacion.copy()
-        comparacion_mostrar["Ingreso_empresas"] = comparacion_mostrar["Ingreso_empresas"].apply(lambda x: f"{x:,.0f}")
-        comparacion_mostrar["Ingreso_total"] = comparacion_mostrar["Ingreso_total"].apply(lambda x: f"{x:,.0f}")
-        comparacion_mostrar["Diferencia"] = comparacion_mostrar["Diferencia"].apply(lambda x: f"{x:,.0f}")
-        comparacion_mostrar["Diferencia_Millones"] = comparacion_mostrar["Diferencia_Millones"].apply(lambda x: f"{x:,.2f}")
-        comparacion_mostrar["Diferencia_Porcentual%"] = comparacion_mostrar["Diferencia_Porcentual%"].apply(lambda x: f"{x:.2f}%")
+        df = self._iter_dates(
+            columnas_ordenadas=columnas,
+            columnas_fecha=["fecha", "fechaPublicacion"],
+            columnas_texto=[
+                "mes",
+                "empresa",
+                "tipoTarifa",
+                "descripcionTarifa",
+                "bloque",
+                "pliego",
+                "estructuraCostos",
+                "numeroExpediente",
+                "numeroResolucion",
+            ],
+        )
+        self.df = df
+        return self._chain_response(df, chain)
 
-        print("\nValidación de TOTAL NACIONAL:")
-        print(
-            comparacion_mostrar[
-                [
-                    "Año", "Mes", "Ingreso_empresas", "Ingreso_total", "Diferencia",
-                    "Diferencia_Millones", "Diferencia_Porcentual%",
-                ]
-            ].head(12)
+
+class ClienteAPITarifasPreciosMedios(_ClienteAPIAresepBase):
+    """Descarga precios medios electricos y conserva el layout de negocio."""
+
+    def __init__(self):
+        super().__init__(
+            "TarifasElectricidad.svc/ObtenerTarifasPreciosMedios",
+            2019,
+            2026,
         )
 
-    def procesar_todo(self):
-        df_aresep_original = self.cargar_aresep()
-        self.validar_total_nacional(df_aresep_original)
-        df_aresep = self.limpiar_aresep(df_aresep_original)
-        df_clima = self.cargar_clima()
-        df_final = self.unir_datos(df_aresep, df_clima)
-        self.guardar_csv(df_aresep, "aresep_unificado_2020_2025.csv")
-        self.guardar_csv(df_final, "dataset_final_2020_2025.csv")
-        return df_aresep, df_clima, df_final
+    def obtener_datos(self, chain=True):
+        columnas = [
+            "id_Mes",
+            "mes",
+            "anho",
+            "empresa",
+            "tipoTarifa",
+            "abonados",
+            "ventas",
+            "ingresoSinCVG",
+            "ingresoConCVG",
+            "precioMedioSinCVG",
+            "precioMedioConCVG",
+            "trimestre",
+            "sistema",
+            "trimestral",
+        ]
+
+        df = self._iter_dates(
+            columnas_ordenadas=columnas,
+            columnas_texto=[
+                "mes",
+                "empresa",
+                "tipoTarifa",
+                "trimestre",
+                "sistema",
+                "trimestral",
+            ],
+        )
+        self.df = df
+        return self._chain_response(df, chain)
+
+
+class ClienteAPIInformacionCentralesElectricas(_ClienteAPIAresepBase):
+    """Descarga el catalogo geografico de centrales electricas."""
+
+    def __init__(self):
+        super().__init__(
+            "Electricidad.svc/ObtenerInformacionCentralesElectricasPorDistritoMapa",
+            None,
+            None,
+        )
+
+    def obtener_datos(self, chain=True):
+        columnas = [
+            "id_Objecto",
+            "operador",
+            "centralElectrica",
+            "fuente",
+            "provincia",
+            "canton",
+            "distrito",
+            "codigoDTA",
+            "coordenadaX",
+            "coordenadaY",
+        ]
+
+        df = self._iter_dates(
+            columnas_ordenadas=columnas,
+            columnas_texto=[
+                "operador",
+                "centralElectrica",
+                "fuente",
+                "provincia",
+                "canton",
+                "distrito",
+                "codigoDTA",
+                "coordenadaX",
+                "coordenadaY",
+            ],
+        )
+
+        for columna in ["coordenadaX", "coordenadaY"]:
+            if columna in df.columns:
+                df[columna] = pd.to_numeric(df[columna], errors="coerce")
+
+        self.df = df
+        return self._chain_response(df, chain)
+
+
+class ClienteAPIHistoricoTarifasHidrocarburos(_ClienteAPIAresepBase):
+    """Descarga el historico completo de tarifas de hidrocarburos."""
+
+    def __init__(self):
+        super().__init__(
+            "TarifaCombustible.svc/ObtenerHistoricoTarifasHidrocarburos",
+            None,
+            None,
+        )
+
+    def obtener_datos(self, chain=True):
+        columnas = [
+            "numeroExpediente",
+            "numeroResolucion",
+            "fechaPublicacion",
+            "alcanceGaceta",
+            "numeroGaceta",
+            "producto",
+            "tipoCambio",
+            "precioReferenciaInternacional",
+            "precioColonizado",
+            "costoAdquisicionDolar",
+            "costoAdquisicionColones",
+            "otrosIngresosProrrateados",
+            "asigCruzPesc",
+            "asigCruzMinae",
+            "asigPolGob",
+            "subCruzPesc",
+            "subCruzMinae",
+            "subPolGob",
+            "diferencialPrecios",
+            "liquidacionExtraordinaria",
+            "impuestoUnico",
+            "canon",
+            "margenOperacion",
+            "rendTarif",
+            "liquidacionOrdinaria",
+            "precioPlantelSinImpuesto",
+            "ley9840",
+            "precioConImpuesto",
+            "margenComercionalizador",
+            "precioFinalSinPuntoFijo",
+            "margenEstacionesTerrestres",
+            "margenEstacionesAereas",
+            "fleteEstaciones",
+            "margenEnvasador",
+            "precioFinalSinIVA",
+            "IVA",
+            "precioFinal",
+            "margenDistribuidos",
+            "margenDetallista",
+            "precioConsumidorFinalGas",
+            "precioTerminal",
+            "rige",
+            "limiteInferiorBanda",
+            "limiteSuperiorBanda",
+            "densidadReferencia",
+            "precioImpuestoMasa",
+            "precioFinalSinPuntoFijoMasa",
+            "margenComercializadorMasa",
+            "idSIET",
+            "observaciones",
+        ]
+
+        df = self._iter_dates(
+            columnas_ordenadas=columnas,
+            columnas_fecha=["fechaPublicacion"],
+            columnas_texto=[
+                "numeroExpediente",
+                "numeroResolucion",
+                "alcanceGaceta",
+                "producto",
+                "rige",
+                "idSIET",
+                "observaciones",
+            ],
+        )
+        self.df = df
+        return self._chain_response(df, chain)
+
+
+class ClienteAPIZonasConcesionPorOperador(_ClienteAPIAresepBase):
+    """Descarga el catalogo geografico de zonas por concesion."""
+
+    def __init__(self):
+        super().__init__(
+            "Electricidad.svc/ObtenerInformacionZonasConcesionPorOperadorMapa",
+            None,
+            None,
+        )
+
+    def obtener_datos(self, chain=True):
+        columnas = [
+            "id_Objecto",
+            "operador",
+            "descripcion",
+            "area",
+            "coordenadas",
+        ]
+
+        df = self._iter_dates(
+            columnas_ordenadas=columnas,
+            columnas_texto=["operador", "descripcion"],
+        )
+
+        if "area" in df.columns:
+            df["area"] = pd.to_numeric(df["area"], errors="coerce")
+
+        self.df = df
+        return self._chain_response(df, chain)

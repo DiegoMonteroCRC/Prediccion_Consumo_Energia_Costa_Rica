@@ -198,9 +198,13 @@ BEGIN
     SELECT COUNT(*) INTO v_count FROM inserted;
     RETURN QUERY SELECT 'dim_resolucion_hidrocarburo', v_count, 'Carga de dimension resolucion completada';
 
+    DELETE FROM "Fact_Dim".fact_clima_mensual
+    WHERE central_key IS NULL;
+
     WITH clima AS (
         SELECT
             t.tiempo_key,
+            c.central_key,
             e.empresa_key,
             s.t2m,
             s.ws10m,
@@ -220,22 +224,27 @@ BEGIN
         FROM "Staging".stg_clima_nasa s
         INNER JOIN "Fact_Dim".dim_tiempo t
             ON t.fecha = MAKE_DATE(s.ano, s.mes, 1)
+        INNER JOIN "Fact_Dim".dim_central_electrica c
+            ON c.id_objecto = s.id_objecto
         INNER JOIN "Fact_Dim".dim_empresa e
             ON e.nombre_empresa = s.empresa
-        WHERE s.ano IS NOT NULL AND s.mes BETWEEN 1 AND 12 AND s.empresa IS NOT NULL
+        WHERE s.ano IS NOT NULL
+          AND s.mes BETWEEN 1 AND 12
+          AND s.empresa IS NOT NULL
+          AND s.id_objecto IS NOT NULL
     ),
     inserted AS (
         INSERT INTO "Fact_Dim".fact_clima_mensual (
-            tiempo_key, empresa_key, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
+            tiempo_key, central_key, empresa_key, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
             cloud_od, gwetroot, ts, prectotcorr, allsky_sfc_sw_dwn, ps, t2mwet,
             allsky_sfc_sw_diff, allsky_sfc_lw_dwn
         )
         SELECT
-            tiempo_key, empresa_key, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
+            tiempo_key, central_key, empresa_key, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
             cloud_od, gwetroot, ts, prectotcorr, allsky_sfc_sw_dwn, ps, t2mwet,
             allsky_sfc_sw_diff, allsky_sfc_lw_dwn
         FROM clima
-        ON CONFLICT (tiempo_key, empresa_key) DO NOTHING
+        ON CONFLICT (tiempo_key, central_key) DO NOTHING
         RETURNING 1
     )
     SELECT COUNT(*) INTO v_count FROM inserted;
