@@ -69,18 +69,11 @@ CREATE TABLE IF NOT EXISTS "Staging".stg_distribucion (
     id_mes                   INTEGER,
     mes                      VARCHAR(15),
     anho                     INTEGER,
-    fecha                    DATE,
     empresa                  VARCHAR(25),
     tipo_tarifa              VARCHAR(20),
     descripcion_tarifa       VARCHAR(120),
     bloque                   VARCHAR(120),
-    tarifa_promedio          DOUBLE PRECISION,
-    tarifa                   DOUBLE PRECISION,
-    pliego                   VARCHAR(120),
-    estructura_costos        VARCHAR(150),
-    numero_expediente        VARCHAR(50),
-    numero_resolucion        VARCHAR(50),
-    fecha_publicacion        DATE
+    tarifa_promedio          DOUBLE PRECISION
 );
 
 CREATE TABLE IF NOT EXISTS "Staging".stg_hidrocarburos (

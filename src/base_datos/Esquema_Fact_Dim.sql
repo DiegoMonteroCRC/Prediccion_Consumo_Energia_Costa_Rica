@@ -217,6 +217,14 @@ CREATE TABLE IF NOT EXISTS "Fact_Dim".bridge_empresa_zona (
     UNIQUE (empresa_key, zona_key)
 );
 
+CREATE TABLE IF NOT EXISTS "Fact_Dim".bridge_central_zona (
+    bridge_central_zona_key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    central_key BIGINT NOT NULL REFERENCES "Fact_Dim".dim_central_electrica(central_key),
+    zona_key    BIGINT NOT NULL REFERENCES "Fact_Dim".dim_zona_concesion(zona_key),
+    fuente_vinculo VARCHAR(50) NOT NULL DEFAULT 'OPERADOR_ALIAS',
+    UNIQUE (central_key, zona_key)
+);
+
 -- ============================================
 -- INDICES RECOMENDADOS
 -- ============================================
@@ -243,3 +251,9 @@ ON "Fact_Dim".bridge_empresa_zona (empresa_key);
 
 CREATE INDEX IF NOT EXISTS idx_bridge_empresa_zona_zona
 ON "Fact_Dim".bridge_empresa_zona (zona_key);
+
+CREATE INDEX IF NOT EXISTS idx_bridge_central_zona_central
+ON "Fact_Dim".bridge_central_zona (central_key);
+
+CREATE INDEX IF NOT EXISTS idx_bridge_central_zona_zona
+ON "Fact_Dim".bridge_central_zona (zona_key);
