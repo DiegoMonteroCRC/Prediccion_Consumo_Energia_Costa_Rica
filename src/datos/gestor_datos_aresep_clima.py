@@ -4,18 +4,25 @@ import os
 import glob
 import pandas as pd
 
+try:
+    from src.api.cliente_api_clima import ClienteAPI
+except ModuleNotFoundError:
+    from api.cliente_api_clima import ClienteAPI
+
 
 class GestorDatos:
     """Une fuentes mensuales y genera los CSV derivados usados por el proyecto."""
 
     def __init__(self):
         self.ruta_aresep = "../data/raw/aresep/*.csv"
-        self.ruta_clima = "../data/raw/api/clima_nasa_2020_2025.csv"
+        self.ruta_clima = "../data/raw/api/clima_NASA_unificado_centrales_electricas_2020-2025.csv"
+        self.ruta_centro = "../data/processed/aresep_apis/Centro.csv"
         self.ruta_procesados = "../data/processed/"
+        self.inicio_clima = "2020"
+        self.fin_clima = "2025"
 
     def cargar_aresep(self):
         """Lee todos los CSV crudos de ARESEP y los concatena en un solo DataFrame."""
-        # La union temprana simplifica la validacion y la limpieza mensual posterior.
         archivos = glob.glob(self.ruta_aresep)
 
         if not archivos:
@@ -32,7 +39,6 @@ class GestorDatos:
 
     def limpiar_aresep(self, df):
         """Normaliza columnas clave para que ARESEP pueda unirse con clima."""
-        # Aqui se homologa texto, meses y tipos antes del merge con NASA POWER.
         df = df.copy()
 
         df.columns = df.columns.str.strip()
@@ -72,7 +78,6 @@ class GestorDatos:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        # eliminar TOTAL NACIONAL para el análisis principal
         if "Empresa" in df.columns:
             df = df[df["Empresa"] != "TOTAL NACIONAL"]
 
@@ -83,9 +88,25 @@ class GestorDatos:
 
         return df
 
+    def generar_clima_si_no_existe(self):
+        if os.path.exists(self.ruta_clima):
+            print("Clima: archivo existente")
+            return
+
+        print("Clima: generando archivo desde Centro.csv...")
+        cliente = ClienteAPI(ruta_centro=self.ruta_centro)
+        cliente.generar_csv_desde_centro(
+            inicio=self.inicio_clima,
+            fin=self.fin_clima,
+            ruta_salida=self.ruta_clima,
+        )
+        print("Clima: archivo generado")
+
     def cargar_clima(self):
+        self.generar_clima_si_no_existe()
+
         if not os.path.exists(self.ruta_clima):
-            raise FileNotFoundError("No se encontró el archivo de clima en ../data/raw/api/")
+            raise FileNotFoundError(f"No se encontró el archivo de clima en {self.ruta_clima}")
 
         df_clima = pd.read_csv(self.ruta_clima, encoding="utf-8")
         df_clima.columns = df_clima.columns.str.strip()
@@ -123,7 +144,6 @@ class GestorDatos:
         df.columns = df.columns.str.strip()
         df["Empresa"] = df["Empresa"].astype(str).str.strip().str.upper()
 
-        # convertir columnas importantes
         if "Año" in df.columns:
             df["Año"] = pd.to_numeric(df["Año"], errors="coerce")
 
@@ -159,14 +179,11 @@ class GestorDatos:
         )
 
         comparacion["Diferencia"] = comparacion["Ingreso_total"] - comparacion["Ingreso_empresas"]
-
         comparacion["Diferencia_Millones"] = (comparacion["Diferencia"] / 1_000_000).round(2)
-
         comparacion["Diferencia_Porcentual%"] = (
             (comparacion["Diferencia"] / comparacion["Ingreso_total"]) * 100
         ).round(2)
 
-        # crear columnas solo para mostrar bonito
         comparacion_mostrar = comparacion.copy()
         comparacion_mostrar["Ingreso_empresas"] = comparacion_mostrar["Ingreso_empresas"].apply(
             lambda x: f"{x:,.0f}"
@@ -201,10 +218,8 @@ class GestorDatos:
 
     def procesar_todo(self):
         """Ejecuta la secuencia completa: validar, limpiar, unir y exportar."""
-        # Este metodo es la fuente de los CSV derivados usados por notebooks y ETL_main.
         df_aresep_original = self.cargar_aresep()
 
-        # validar antes de eliminar TOTAL NACIONAL
         self.validar_total_nacional(df_aresep_original)
 
         df_aresep = self.limpiar_aresep(df_aresep_original)
