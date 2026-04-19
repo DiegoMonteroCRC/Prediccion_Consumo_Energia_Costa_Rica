@@ -7,13 +7,14 @@ from src.datos.gestor_datos_aresep_clima import GestorDatos
 
 
 import os
+from pathlib import Path
 from time import perf_counter
 
 os.environ["PGDATABASE"] = "DW_Energia_ML"
 os.environ["PGUSER"] = "<***>"
-os.environ["PGPASSWORD"] = "<***>>"
+os.environ["PGPASSWORD"] = "<***>"
 os.environ["PGHOST"] = "<***>"
-os.environ["PGPORT"] = "5432"
+os.environ["PGPORT"] = "5433"
 
 
 CENTRO_COLUMNS = [
@@ -120,6 +121,14 @@ CLIMA_COLUMNS = [
     "ALLSKY_SFC_LW_DWN",
 ]
 
+SQL_BOOTSTRAP_FILES = [
+    "Esquema_Catalogos.sql",
+    "Esquema_Staging.sql",
+    "Esquema_Fact_Dim.sql",
+    "Funciones_Staging.sql",
+    "Funciones_Fact_Dim.sql",
+]
+
 
 def checkpoint(inicio_total, inicio_etapa, mensaje):
     """Mide el avance por etapa para ubicar cuellos de botella del pipeline."""
@@ -133,6 +142,17 @@ def checkpoint(inicio_total, inicio_etapa, mensaje):
 def _ordenar_columnas_existentes(df, columnas):
     columnas_existentes = [col for col in columnas if col in df.columns]
     return df[columnas_existentes].copy()
+
+
+def sincronizar_objetos_sql():
+    """Aplica los scripts SQL del proyecto antes de correr la carga operacional."""
+    gestor = CargadorDatos().GestorDB
+    base_sql = Path(__file__).resolve().parent / "base_datos"
+
+    for archivo in SQL_BOOTSTRAP_FILES:
+        ruta = base_sql / archivo
+        print(f"[INICIO] Sincronizando SQL: {archivo}...")
+        gestor._ejecutar_script_sql(ruta)
 
 
 def preparar_centro(etl):
@@ -151,16 +171,18 @@ def preparar_zonas(etl):
 
 def preparar_distribucion(etl):
     """Conserva las columnas utiles del flujo de distribucion antes del staging."""
-    columnas_sin_nulos = list(etl.col_nulls(reverse=True, chain=False).keys())
-    columnas_filtradas = [col for col in DISTRIBUCION_COLUMNS if col in columnas_sin_nulos]
-    etl.df = _ordenar_columnas_existentes(etl.df, columnas_filtradas)
+    etl.df = _ordenar_columnas_existentes(etl.df, DISTRIBUCION_COLUMNS)
     return etl
 
 
 def preparar_hidrocarburos(etl):
     """Replica la limpieza principal del notebook de hidrocarburos."""
-    etl.rm_col(["observaciones"], axis=1)
-    etl.rm_col(["idSIET"], axis=1)
+    columnas_descartables = [
+        columna for columna in ["observaciones", "idSIET"]
+        if columna in etl.df.columns
+    ]
+    if columnas_descartables:
+        etl.rm_col(columnas_descartables, axis=1)
     etl.df = _ordenar_columnas_existentes(etl.df, HIDROCARBUROS_COLUMNS)
     num_col = list(etl.numeric_col(chain=False).columns.values)
     etl.ceros_nan(to_cero=True, columnas=num_col)
@@ -182,6 +204,12 @@ def preparar_clima(etl):
 def main():
     inicio_total = perf_counter()
     inicio_etapa = inicio_total
+    cwd_original = Path.cwd()
+    src_dir = Path(__file__).resolve().parent
+
+    print("[INICIO] Sincronizando esquemas y funciones SQL...")
+    sincronizar_objetos_sql()
+    inicio_etapa = checkpoint(inicio_total, inicio_etapa, "SQL sincronizado")
 
     # La corrida inicia con staging vacio para que los hechos se recarguen sin residuos previos.
     print("[INICIO] Limpiando staging...")
@@ -220,8 +248,13 @@ def main():
     etl_centrales = ETLs()
     etl_zonas = ETLs()
 
-    gestor = GestorDatos()
-    df_aresep, df_clima, _ = gestor.procesar_todo()
+    # GestorDatos se integra tal cual, forzando el cwd que espera para resolver sus CSV.
+    os.chdir(src_dir)
+    try:
+        gestor = GestorDatos()
+        df_aresep, df_clima, _ = gestor.procesar_todo()
+    finally:
+        os.chdir(cwd_original)
     inicio_etapa = checkpoint(inicio_total, inicio_etapa, "Datasets derivados construidos")
 
     print(

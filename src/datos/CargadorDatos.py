@@ -1,6 +1,8 @@
 """Base comun para cargar, resumir y persistir DataFrames del proyecto."""
 
 import os
+from pathlib import Path
+
 import pandas as pd
 
 from src.datos.gestor_datos_aresep_clima import GestorDatos
@@ -10,6 +12,8 @@ from src.datos.GestorDBconn import GestorDBconn
 
 class CargadorDatos:
     """Centraliza el DataFrame activo y las utilidades base de carga/guardado."""
+
+    BASE_DIR = Path(__file__).resolve().parents[2]
 
     def __init__(self):
         # Estado compartido por las subclases que trabajan sobre el mismo DataFrame activo.
@@ -96,9 +100,10 @@ class CargadorDatos:
         """Exporta el DataFrame activo como CSV dentro de data/."""
         if "index" not in pd_kwargs:
             pd_kwargs["index"] = False
-        ruta = f"../data/{nombre}.csv"
+        ruta = self.BASE_DIR / "data" / f"{nombre}.csv"
+        ruta.parent.mkdir(parents=True, exist_ok=True)
         self.__df.to_csv(ruta, *pd_args, **pd_kwargs)
-        self.last_result = {"ok": True, "ruta": ruta}
+        self.last_result = {"ok": True, "ruta": str(ruta)}
         if chain:
             return self
         return None
@@ -116,7 +121,7 @@ class CargadorDatos:
 
     def unificador_aresep_clima(self):
         """Flujo legado para generar clima crudo y unificar ARESEP + clima."""
-        ruta_clima = "../data/raw/api/clima_nasa_2020_2025.csv"
+        ruta_clima = self.BASE_DIR / "data" / "raw" / "api" / "clima_nasa_2020_2025.csv"
 
         empresas = [
             "CNFL",
@@ -129,7 +134,7 @@ class CargadorDatos:
             "ICE"
         ]
 
-        if not os.path.exists(ruta_clima):
+        if not ruta_clima.exists():
             print("No existe el archivo de clima. Descargando desde la API")
 
             cliente = self.ClienteAPI()
@@ -139,7 +144,7 @@ class CargadorDatos:
             print(df_clima.head())
             print(df_clima.shape)
 
-            cliente.guardar_csv(df_clima, ruta_clima)
+            cliente.guardar_csv(df_clima, str(ruta_clima))
             print(f"\nArchivo guardado en: {ruta_clima}")
 
         else:

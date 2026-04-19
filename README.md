@@ -301,50 +301,69 @@ erDiagram
     catalogo_centrales_electricas_variables {
         string id
         string name
+        text tags
         string services
         string availability
-        string description
+        text description
+        text keywords
+        text warnings_api_original
     }
 
     catalogo_hidrocarburos_variables {
         string id
         string name
+        text tags
         string services
         string availability
-        string description
+        text description
+        text keywords
+        text warnings_api_original
     }
 
     catalogo_tarifas_electricidad_distribucion_variables {
         string id
         string name
+        text tags
         string services
         string availability
-        string description
+        text description
+        text keywords
+        text warnings_api_original
     }
 
     catalogo_tarifas_precios_medios_variables {
         string id
         string name
+        text tags
         string services
         string availability
-        string description
+        text description
+        text keywords
+        text warnings_api_original
     }
 
     catalogo_zonas_concesion_operador_variables {
         string id
         string name
+        text tags
         string services
         string availability
-        string description
+        text description
+        text keywords
+        text warnings_api_original
     }
 
     catalogo_clima_variables {
         string id
         string name_es
         string name_en
+        text tags
         string services
         string availability
-        string description
+        text description
+        text alternates
+        text keywords
+        text warnings
     }
 ```
 
@@ -360,7 +379,19 @@ erDiagram
         int mes
         float t2m
         float ws10m
+        float cloud_amt
+        float rh2m
+        float t2m_max
+        float t2m_min
+        float cloud_od
+        float gwetroot
+        float ts
         float prectotcorr
+        float allsky_sfc_sw_dwn
+        float ps
+        float t2mwet
+        float allsky_sfc_sw_diff
+        float allsky_sfc_lw_dwn
     }
 
     stg_aresep_medios {
@@ -369,20 +400,32 @@ erDiagram
         string empresa
         string tarifa
         float abonados
+        float ventas
+        float ingreso_sin_cvg
+        float ingreso_con_cvg
+        float precio_medio_sin_cvg
         float precio_medio_con_cvg
+        string trimestre
+        string sistema
+        string trimestral
     }
 
     stg_centro {
+        bigint stg_centro_key PK
         int id_objecto
         string operador
         string central_electrica
         string fuente
         string provincia
+        string canton
+        string distrito
+        int codigo_dta
         float coordenada_x
         float coordenada_y
     }
 
     stg_zonas {
+        bigint stg_zona_key PK
         int id_objecto
         string operador
         string descripcion
@@ -390,26 +433,54 @@ erDiagram
         string coordenadas
         string tipo_geometria
         int srid
+        timestamp fecha_carga
     }
 
     stg_distribucion {
+        bigint stg_distribucion_key PK
         int id_mes
+        string mes
         int anho
-        date fecha
         string empresa
         string tipo_tarifa
+        string descripcion_tarifa
+        string bloque
         float tarifa_promedio
-        string numero_expediente
     }
 
     stg_hidrocarburos {
+        bigint stg_hidrocarburos_key PK
         string numero_expediente
         string numero_resolucion
         date fecha_publicacion
+        string alcance_gaceta
+        int numero_gaceta
         string producto
         float tipo_cambio
+        float precio_referencia_internacional
+        float precio_colonizado
+        float otros_ingresos_prorrateados
+        float asig_cruz_pesc
+        float asig_cruz_minae
+        float sub_cruz_pesc
+        float sub_cruz_minae
+        float diferencial_precios
+        float impuesto_unico
+        float canon
+        float margen_operacion
+        float rend_tarif
+        float precio_plantel_sin_impuesto
+        float precio_con_impuesto
+        float margen_estaciones_terrestres
+        float margen_estaciones_aereas
+        float flete_estaciones
+        float margen_envasador
+        float margen_distribuidor
+        float margen_detallista
         bool rige
+        float precio_consumidor_final_gas
         float precio_final
+        float precio_final_sin_punto_fijo
     }
 ```
 
@@ -500,13 +571,32 @@ erDiagram
         string fuente_vinculo
     }
 
+    bridge_central_zona {
+        bigint bridge_central_zona_key PK
+        bigint central_key FK
+        bigint zona_key FK
+        string fuente_vinculo
+    }
+
     fact_clima_mensual {
         bigint fact_clima_key PK
         bigint tiempo_key FK
         bigint empresa_key FK
         float t2m
         float ws10m
+        float cloud_amt
+        float rh2m
+        float t2m_max
+        float t2m_min
+        float cloud_od
+        float gwetroot
+        float ts
         float prectotcorr
+        float allsky_sfc_sw_dwn
+        float ps
+        float t2mwet
+        float allsky_sfc_sw_diff
+        float allsky_sfc_lw_dwn
     }
 
     fact_tarifa_electricidad {
@@ -516,6 +606,9 @@ erDiagram
         bigint tarifa_key FK
         float abonados
         float ventas
+        float ingreso_sin_cvg
+        float ingreso_con_cvg
+        float precio_medio_sin_cvg
         float precio_medio_con_cvg
     }
 
@@ -533,6 +626,27 @@ erDiagram
         bigint producto_key FK
         bigint resolucion_key FK
         float tipo_cambio
+        float precio_referencia_internacional
+        float precio_colonizado
+        float otros_ingresos_prorrateados
+        float asig_cruz_pesc
+        float asig_cruz_minae
+        float sub_cruz_pesc
+        float sub_cruz_minae
+        float diferencial_precios
+        float impuesto_unico
+        float canon
+        float margen_operacion
+        float rend_tarif
+        float precio_plantel_sin_impuesto
+        float precio_con_impuesto
+        float margen_estaciones_terrestres
+        float margen_estaciones_aereas
+        float flete_estaciones
+        float margen_envasador
+        float margen_distribuidor
+        float margen_detallista
+        float precio_consumidor_final_gas
         float precio_final
         float precio_final_sin_punto_fijo
     }
@@ -554,6 +668,8 @@ erDiagram
     dim_resolucion_hidrocarburo ||--o{ fact_hidrocarburos : resolucion
     dim_empresa ||--o{ bridge_empresa_zona : empresa
     dim_zona_concesion ||--o{ bridge_empresa_zona : zona
+    dim_central_electrica ||--o{ bridge_central_zona : central
+    dim_zona_concesion ||--o{ bridge_central_zona : zona
 ```
 
 ## Scripts principales
