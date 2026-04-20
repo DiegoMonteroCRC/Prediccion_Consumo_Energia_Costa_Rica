@@ -1,5 +1,10 @@
 CREATE OR REPLACE FUNCTION "Staging".fn_stg_insert_clima_nasa(
+    p_id_objecto INTEGER,
+    p_central_electrica VARCHAR,
+    p_operador VARCHAR,
     p_empresa VARCHAR,
+    p_coordenada_x DOUBLE PRECISION,
+    p_coordenada_y DOUBLE PRECISION,
     p_ano INTEGER,
     p_mes INTEGER,
     p_t2m DOUBLE PRECISION,
@@ -23,12 +28,14 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
     INSERT INTO "Staging".stg_clima_nasa (
-        empresa, ano, mes, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
+        id_objecto, central_electrica, operador, empresa, coordenada_x, coordenada_y,
+        ano, mes, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
         cloud_od, gwetroot, ts, prectotcorr, allsky_sfc_sw_dwn, ps, t2mwet,
         allsky_sfc_sw_diff, allsky_sfc_lw_dwn
     )
     VALUES (
-        p_empresa, p_ano, p_mes, p_t2m, p_ws10m, p_cloud_amt, p_rh2m, p_t2m_max, p_t2m_min,
+        p_id_objecto, p_central_electrica, p_operador, p_empresa, p_coordenada_x, p_coordenada_y,
+        p_ano, p_mes, p_t2m, p_ws10m, p_cloud_amt, p_rh2m, p_t2m_max, p_t2m_min,
         p_cloud_od, p_gwetroot, p_ts, p_prectotcorr, p_allsky_sfc_sw_dwn, p_ps, p_t2mwet,
         p_allsky_sfc_sw_diff, p_allsky_sfc_lw_dwn
     );
@@ -111,32 +118,23 @@ CREATE OR REPLACE FUNCTION "Staging".fn_stg_insert_distribucion(
     p_id_mes INTEGER,
     p_mes VARCHAR,
     p_anho INTEGER,
-    p_fecha DATE,
     p_empresa VARCHAR,
     p_tipo_tarifa VARCHAR,
     p_descripcion_tarifa VARCHAR,
     p_bloque VARCHAR,
-    p_tarifa_promedio DOUBLE PRECISION,
-    p_tarifa DOUBLE PRECISION,
-    p_pliego VARCHAR,
-    p_estructura_costos VARCHAR,
-    p_numero_expediente VARCHAR,
-    p_numero_resolucion VARCHAR,
-    p_fecha_publicacion DATE
+    p_tarifa_promedio DOUBLE PRECISION
 )
 RETURNS TABLE(ok BOOLEAN, mensaje TEXT, tabla TEXT, filas_afectadas INTEGER)
 LANGUAGE plpgsql
 AS $$
 BEGIN
     INSERT INTO "Staging".stg_distribucion (
-        id_mes, mes, anho, fecha, empresa, tipo_tarifa, descripcion_tarifa,
-        bloque, tarifa_promedio, tarifa, pliego, estructura_costos,
-        numero_expediente, numero_resolucion, fecha_publicacion
+        id_mes, mes, anho, empresa, tipo_tarifa, descripcion_tarifa,
+        bloque, tarifa_promedio
     )
     VALUES (
-        p_id_mes, p_mes, p_anho, p_fecha, p_empresa, p_tipo_tarifa, p_descripcion_tarifa,
-        p_bloque, p_tarifa_promedio, p_tarifa, p_pliego, p_estructura_costos,
-        p_numero_expediente, p_numero_resolucion, p_fecha_publicacion
+        p_id_mes, p_mes, p_anho, p_empresa, p_tipo_tarifa, p_descripcion_tarifa,
+        p_bloque, p_tarifa_promedio
     );
 
     RETURN QUERY SELECT TRUE, 'Fila insertada correctamente', 'stg_distribucion', 1;
@@ -222,6 +220,7 @@ CREATE OR REPLACE FUNCTION "Staging".fn_stg_insert_zonas(
     p_descripcion VARCHAR,
     p_area NUMERIC,
     p_coordenadas TEXT,
+    p_tipo_geometria VARCHAR DEFAULT NULL,
     p_srid INTEGER DEFAULT 5367
 )
 RETURNS TABLE(ok BOOLEAN, mensaje TEXT, tabla TEXT, filas_afectadas INTEGER)
@@ -230,14 +229,16 @@ AS $$
 DECLARE
     v_tipo_geometria VARCHAR(20);
 BEGIN
-    v_tipo_geometria :=
+    v_tipo_geometria := COALESCE(
+        NULLIF(TRIM(p_tipo_geometria), ''),
         CASE
             WHEN p_coordenadas ILIKE 'MULTIPOLYGON%' THEN 'MULTIPOLYGON'
             WHEN p_coordenadas ILIKE 'POLYGON%' THEN 'POLYGON'
             WHEN p_coordenadas ILIKE 'LINESTRING%' THEN 'LINESTRING'
             WHEN p_coordenadas ILIKE 'POINT%' THEN 'POINT'
             ELSE 'DESCONOCIDO'
-        END;
+        END
+    );
 
     INSERT INTO "Staging".stg_zonas (
         id_objecto,

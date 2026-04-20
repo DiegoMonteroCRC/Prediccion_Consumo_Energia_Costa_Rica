@@ -2,7 +2,12 @@ CREATE SCHEMA IF NOT EXISTS "Staging";
 
 
 CREATE TABLE IF NOT EXISTS "Staging".stg_clima_nasa (
+    id_objecto               INTEGER,
+    central_electrica        VARCHAR(150),
+    operador                 VARCHAR(150),
     empresa                  VARCHAR(20),
+    coordenada_x             DOUBLE PRECISION,
+    coordenada_y             DOUBLE PRECISION,
     ano                      INTEGER,
     mes                      INTEGER,
     t2m                      DOUBLE PRECISION,
@@ -21,6 +26,31 @@ CREATE TABLE IF NOT EXISTS "Staging".stg_clima_nasa (
     allsky_sfc_sw_diff       DOUBLE PRECISION,
     allsky_sfc_lw_dwn        DOUBLE PRECISION
 );
+
+ALTER TABLE IF EXISTS "Staging".stg_clima_nasa
+    ADD COLUMN IF NOT EXISTS id_objecto INTEGER,
+    ADD COLUMN IF NOT EXISTS central_electrica VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS operador VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS empresa VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS coordenada_x DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS coordenada_y DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS ano INTEGER,
+    ADD COLUMN IF NOT EXISTS mes INTEGER,
+    ADD COLUMN IF NOT EXISTS t2m DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS ws10m DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS cloud_amt DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS rh2m DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS t2m_max DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS t2m_min DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS cloud_od DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS gwetroot DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS ts DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS prectotcorr DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS allsky_sfc_sw_dwn DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS ps DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS t2mwet DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS allsky_sfc_sw_diff DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS allsky_sfc_lw_dwn DOUBLE PRECISION;
 
 CREATE TABLE IF NOT EXISTS "Staging".stg_aresep_medios (
     mes                      INTEGER,
@@ -69,18 +99,11 @@ CREATE TABLE IF NOT EXISTS "Staging".stg_distribucion (
     id_mes                   INTEGER,
     mes                      VARCHAR(15),
     anho                     INTEGER,
-    fecha                    DATE,
     empresa                  VARCHAR(25),
     tipo_tarifa              VARCHAR(20),
     descripcion_tarifa       VARCHAR(120),
     bloque                   VARCHAR(120),
-    tarifa_promedio          DOUBLE PRECISION,
-    tarifa                   DOUBLE PRECISION,
-    pliego                   VARCHAR(120),
-    estructura_costos        VARCHAR(150),
-    numero_expediente        VARCHAR(50),
-    numero_resolucion        VARCHAR(50),
-    fecha_publicacion        DATE
+    tarifa_promedio          DOUBLE PRECISION
 );
 
 CREATE TABLE IF NOT EXISTS "Staging".stg_hidrocarburos (

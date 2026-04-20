@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from src.datos.DataModels._BaseStgModel import _BaseStgModel
+from datos.DataModels._BaseStgModel import _BaseStgModel
 
 
 @dataclass

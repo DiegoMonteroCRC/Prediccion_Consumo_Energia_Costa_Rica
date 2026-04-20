@@ -14,7 +14,7 @@ BEGIN
         FROM "Staging".stg_aresep_medios
         WHERE ano IS NOT NULL AND mes BETWEEN 1 AND 12
         UNION
-        SELECT COALESCE(fecha, MAKE_DATE(anho, id_mes, 1)::DATE) AS fecha
+        SELECT MAKE_DATE(anho, id_mes, 1)::DATE AS fecha
         FROM "Staging".stg_distribucion
         WHERE anho IS NOT NULL AND id_mes BETWEEN 1 AND 12
         UNION
@@ -79,8 +79,7 @@ BEGIN
         UNION
         SELECT
             'DISTRIBUCION|' || COALESCE(tipo_tarifa, '') || '|' || COALESCE(descripcion_tarifa, '') || '|' ||
-            COALESCE(bloque, '') || '|' || COALESCE(tarifa::TEXT, '') || '|' || COALESCE(pliego, '') || '|' ||
-            COALESCE(estructura_costos, '') AS tarifa_nk,
+            COALESCE(bloque, '') AS tarifa_nk,
             COALESCE(descripcion_tarifa, tipo_tarifa) AS nombre_tarifa,
             tipo_tarifa,
             descripcion_tarifa,
@@ -199,9 +198,13 @@ BEGIN
     SELECT COUNT(*) INTO v_count FROM inserted;
     RETURN QUERY SELECT 'dim_resolucion_hidrocarburo', v_count, 'Carga de dimension resolucion completada';
 
+    DELETE FROM "Fact_Dim".fact_clima_mensual
+    WHERE central_key IS NULL;
+
     WITH clima AS (
         SELECT
             t.tiempo_key,
+            c.central_key,
             e.empresa_key,
             s.t2m,
             s.ws10m,
@@ -221,22 +224,27 @@ BEGIN
         FROM "Staging".stg_clima_nasa s
         INNER JOIN "Fact_Dim".dim_tiempo t
             ON t.fecha = MAKE_DATE(s.ano, s.mes, 1)
+        INNER JOIN "Fact_Dim".dim_central_electrica c
+            ON c.id_objecto = s.id_objecto
         INNER JOIN "Fact_Dim".dim_empresa e
             ON e.nombre_empresa = s.empresa
-        WHERE s.ano IS NOT NULL AND s.mes BETWEEN 1 AND 12 AND s.empresa IS NOT NULL
+        WHERE s.ano IS NOT NULL
+          AND s.mes BETWEEN 1 AND 12
+          AND s.empresa IS NOT NULL
+          AND s.id_objecto IS NOT NULL
     ),
     inserted AS (
         INSERT INTO "Fact_Dim".fact_clima_mensual (
-            tiempo_key, empresa_key, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
+            tiempo_key, central_key, empresa_key, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
             cloud_od, gwetroot, ts, prectotcorr, allsky_sfc_sw_dwn, ps, t2mwet,
             allsky_sfc_sw_diff, allsky_sfc_lw_dwn
         )
         SELECT
-            tiempo_key, empresa_key, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
+            tiempo_key, central_key, empresa_key, t2m, ws10m, cloud_amt, rh2m, t2m_max, t2m_min,
             cloud_od, gwetroot, ts, prectotcorr, allsky_sfc_sw_dwn, ps, t2mwet,
             allsky_sfc_sw_diff, allsky_sfc_lw_dwn
         FROM clima
-        ON CONFLICT (tiempo_key, empresa_key) DO NOTHING
+        ON CONFLICT (tiempo_key, central_key) DO NOTHING
         RETURNING 1
     )
     SELECT COUNT(*) INTO v_count FROM inserted;
@@ -285,14 +293,12 @@ BEGIN
             s.tarifa_promedio
         FROM "Staging".stg_distribucion s
         INNER JOIN "Fact_Dim".dim_tiempo t
-            ON t.fecha = COALESCE(s.fecha, MAKE_DATE(s.anho, s.id_mes, 1))
+            ON t.fecha = MAKE_DATE(s.anho, s.id_mes, 1)
         INNER JOIN "Fact_Dim".dim_empresa e
             ON e.nombre_empresa = s.empresa
         INNER JOIN "Fact_Dim".dim_tarifa d
             ON d.tarifa_nk = 'DISTRIBUCION|' || COALESCE(s.tipo_tarifa, '') || '|' ||
-                             COALESCE(s.descripcion_tarifa, '') || '|' || COALESCE(s.bloque, '') || '|' ||
-                             COALESCE(s.tarifa::TEXT, '') || '|' || COALESCE(s.pliego, '') || '|' ||
-                             COALESCE(s.estructura_costos, '')
+                             COALESCE(s.descripcion_tarifa, '') || '|' || COALESCE(s.bloque, '')
         WHERE s.anho IS NOT NULL AND s.id_mes BETWEEN 1 AND 12 AND s.empresa IS NOT NULL
     ),
     inserted AS (
@@ -461,10 +467,57 @@ BEGIN
 	)
 	SELECT COUNT(*) INTO v_count FROM inserted;
 	RETURN QUERY SELECT 'bridge_empresa_zona', v_count, 'Vinculo empresa-zona completado';
+
+	WITH alias_operador AS (
+	    SELECT *
+	    FROM (
+	        VALUES
+	            ('COMPAÑIA NACIONAL DE FUERZA Y LUZ S.A.', 'CNFL'),
+	            ('INSTITUTO COSTARRICENSE DE ELECTRICIDAD', 'ICE'),
+	            ('JUNTA ADMINISTRATIVA DEL SERVICIO ELECTRICO MUNICIPAL DE CARTAGO', 'JASEC'),
+	            ('EMPRESA DE SERVICIOS PUBLICOS DE HEREDIA S.A.', 'ESPH'),
+	            ('COOPERATIVA DE ELECTRIFICACION RURAL DE SAN CARLOS R.L.', 'COOPELESCA'),
+	            ('COOPERATIVA DE ELECTRIFICACION RURAL LOS SANTOS R.L.', 'COOPESANTOS'),
+	            ('COOPERATIVA DE ELECTRIFICACION RURAL DE GUANACASTE R.L.', 'COOPEGUANACASTE R.L.'),
+	            ('CONSORCIO COOPERATIVO CUBUJUQUI R L', 'COOPEALFARORUIZ')
+	    ) AS alias_operador(operador_central, operador_zona)
+	),
+	relaciones AS (
+	    SELECT DISTINCT
+	        c.central_key,
+	        z.zona_key,
+	        'OPERADOR_EXACTO'::VARCHAR AS fuente_vinculo
+	    FROM "Fact_Dim".dim_central_electrica c
+	    INNER JOIN "Fact_Dim".dim_zona_concesion z
+	        ON UPPER(TRIM(c.operador)) = UPPER(TRIM(z.operador))
+	    UNION
+	    SELECT DISTINCT
+	        c.central_key,
+	        z.zona_key,
+	        'OPERADOR_ALIAS'::VARCHAR AS fuente_vinculo
+	    FROM "Fact_Dim".dim_central_electrica c
+	    INNER JOIN alias_operador a
+	        ON UPPER(TRIM(c.operador)) = UPPER(TRIM(a.operador_central))
+	    INNER JOIN "Fact_Dim".dim_zona_concesion z
+	        ON UPPER(TRIM(z.operador)) = UPPER(TRIM(a.operador_zona))
+	),
+	inserted AS (
+	    INSERT INTO "Fact_Dim".bridge_central_zona (
+	        central_key,
+	        zona_key,
+	        fuente_vinculo
+	    )
+	    SELECT
+	        central_key,
+	        zona_key,
+	        fuente_vinculo
+	    FROM relaciones
+	    ON CONFLICT (central_key, zona_key) DO NOTHING
+	    RETURNING 1
+	)
+	SELECT COUNT(*) INTO v_count FROM inserted;
+	RETURN QUERY SELECT 'bridge_central_zona', v_count, 'Vinculo central-zona completado';
 END;
 $$;
-
-
-
 
 

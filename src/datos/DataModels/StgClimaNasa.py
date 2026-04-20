@@ -1,15 +1,21 @@
-"""Fila canonica de clima NASA para insert masivo en staging."""
+"""Fila canonica de clima NASA por central y mes para staging."""
 
 from dataclasses import dataclass
 from typing import ClassVar
 
-from src.datos.DataModels._BaseStgModel import _BaseStgModel
+from datos.DataModels._BaseStgModel import _BaseStgModel
 
 
 @dataclass
 class StgClimaNasa(_BaseStgModel):
-    """Mapea columnas de clima limpio al naming SQL de stg_clima_nasa."""
+    """Mapea clima mensual por central al naming SQL de stg_clima_nasa."""
+
+    id_objecto: int | None = None
+    central_electrica: str | None = None
+    operador: str | None = None
     empresa: str | None = None
+    coordenada_x: float | None = None
+    coordenada_y: float | None = None
     ano: int | None = None
     mes: int | None = None
     t2m: float | None = None
@@ -29,7 +35,12 @@ class StgClimaNasa(_BaseStgModel):
     allsky_sfc_lw_dwn: float | None = None
 
     aliases: ClassVar[dict] = {
+        "id_objecto": "id_Objecto",
+        "central_electrica": "centralElectrica",
+        "operador": "operador",
         "empresa": "Empresa",
+        "coordenada_x": "coordenadaX",
+        "coordenada_y": "coordenadaY",
         "ano": "Año",
         "mes": "Mes",
         "t2m": "T2M",

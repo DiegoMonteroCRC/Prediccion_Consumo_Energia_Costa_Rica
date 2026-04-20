@@ -1,6 +1,7 @@
 """Gestiona la conexion PostgreSQL y la ejecucion simple de consultas/funciones."""
 
 import os
+from pathlib import Path
 
 import pandas as pd
 
@@ -109,10 +110,14 @@ class GestorDBconn:
     def _consultar(self, query, params=None):
         """Ejecuta un SELECT y devuelve el resultado como DataFrame."""
         conn = self._conectar()
-        with conn.cursor() as cursor:
-            cursor.execute(query, params)
-            columnas = [desc[0] for desc in cursor.description]
-            datos = cursor.fetchall()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query, params)
+                columnas = [desc[0] for desc in cursor.description]
+                datos = cursor.fetchall()
+        except Exception:
+            conn.rollback()
+            raise
         return pd.DataFrame(datos, columns=columnas)
 
     def _ejecutar_funcion(self, nombre_funcion, params=None, schema="public", multiple_rows=False, commit=False):
@@ -121,10 +126,15 @@ class GestorDBconn:
         params = params or ()
         placeholders = ", ".join(["%s"] * len(params))
         query = f'SELECT * FROM "{schema}"."{nombre_funcion}"({placeholders});'
-        resultado = self._consultar(query, params)
+        conn = self._conectar()
 
-        if commit:
-            self._conectar().commit()
+        try:
+            resultado = self._consultar(query, params)
+            if commit:
+                conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
         if multiple_rows:
             return resultado
@@ -133,6 +143,20 @@ class GestorDBconn:
             return {}
 
         return resultado.iloc[0].to_dict()
+
+    def _ejecutar_script_sql(self, ruta_script):
+        """Ejecuta un archivo SQL completo dentro de la conexion activa."""
+        conn = self._conectar()
+        ruta_script = Path(ruta_script)
+        script = ruta_script.read_text(encoding="utf-8")
+
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(script)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
     def __enter__(self):
         self._conectar()

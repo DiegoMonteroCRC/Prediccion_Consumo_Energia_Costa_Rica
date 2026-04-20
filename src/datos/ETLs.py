@@ -6,7 +6,7 @@ from dataclasses import fields
 import pandas as pd
 from psycopg2.extras import execute_values
 
-from src.datos.DataModels import (
+from datos.DataModels import (
     StgAresepMedios,
     StgCentro,
     StgClimaNasa,
@@ -14,7 +14,7 @@ from src.datos.DataModels import (
     StgHidrocarburos,
     StgZonasConcesion,
 )
-from src.eda.ProcesadorEDA import ProcesadorEDA
+from eda.ProcesadorEDA import ProcesadorEDA
 
 
 class ETLs(ProcesadorEDA):
@@ -29,9 +29,31 @@ class ETLs(ProcesadorEDA):
         if self.df is None or not isinstance(self.df, pd.DataFrame):
             raise ValueError("No hay un DataFrame cargado en la instancia para ejecutar la ETL.")
 
+    def _expected_source_columns(self, modelo):
+        """Entrega el contrato esperado de columnas segun el DataModel."""
+        return [modelo.aliases.get(campo.name, campo.name) for campo in fields(modelo)]
+
+    def _validar_contrato_staging(self, modelo):
+        """Detiene la carga cuando el shape ya no coincide con el CSV de referencia."""
+        columnas_esperadas = self._expected_source_columns(modelo)
+        columnas_actuales = list(self.df.columns)
+
+        if columnas_actuales == columnas_esperadas:
+            return
+
+        faltantes = [col for col in columnas_esperadas if col not in columnas_actuales]
+        extras = [col for col in columnas_actuales if col not in columnas_esperadas]
+
+        raise ValueError(
+            "El DataFrame no coincide con el contrato de staging "
+            f"para {modelo.__name__}. Esperadas={columnas_esperadas}, "
+            f"actuales={columnas_actuales}, faltantes={faltantes}, extras={extras}"
+        )
+
     def _ejecutar_etl_staging(self, nombre_funcion, modelo, tabla, chain):
         """Convierte filas a parametros SQL y las inserta por lotes en staging."""
         self._validate_df()
+        self._validar_contrato_staging(modelo)
 
         # Cada fila se adapta al naming del staging usando su DataModel correspondiente.
         registros = [
@@ -51,39 +73,41 @@ class ETLs(ProcesadorEDA):
         )
 
         conn = self.GestorDB._conectar()
-        try:
-            with conn.cursor() as cursor:
-                for i in range(0, len(registros), self.batch_size):
-                    # execute_values reduce el costo de enviar una fila por llamada al servidor.
-                    lote = registros[i:i + self.batch_size]
-                    execute_values(cursor, query_lote, lote, page_size=self.batch_size)
-                    conn.commit()
-                    filas_exitosas += len(lote)
-                    print(
-                        f"[STAGING] {tabla}: {filas_exitosas}/{len(registros)} filas cargadas"
-                    )
-        except Exception as batch_error:
-            # Si falla el lote completo, se retrocede y se inspecciona fila por fila.
-            conn.rollback()
-            print(f"[ERROR][{tabla}] Falla en carga por lote: {batch_error}")
-            errores.append({
-                "tabla": tabla,
-                "mensaje": f"Carga por lote fallida, cambiando a modo diagnostico: {batch_error}"
-            })
 
-            for params in registros:
-                try:
-                    self.GestorDB._ejecutar(query_fila, params=params, commit=True)
-                    filas_exitosas += 1
-                except Exception as row_error:
-                    filas_error += 1
-                    print(f"[ERROR][{tabla}] Fila fallida: {row_error}")
-                    print(f"[ERROR][{tabla}] Parametros: {params}")
-                    errores.append({
-                        "tabla": tabla,
-                        "mensaje": str(row_error),
-                        "params": params
-                    })
+        for i in range(0, len(registros), self.batch_size):
+            lote = registros[i:i + self.batch_size]
+
+            try:
+                with conn.cursor() as cursor:
+                    execute_values(cursor, query_lote, lote, page_size=self.batch_size)
+                conn.commit()
+                filas_exitosas += len(lote)
+            except Exception as batch_error:
+                conn.rollback()
+                print(f"[ERROR][{tabla}] Falla en carga por lote: {batch_error}")
+                errores.append({
+                    "tabla": tabla,
+                    "mensaje": f"Carga por lote fallida, cambiando a modo diagnostico: {batch_error}"
+                })
+
+                # Solo el lote conflictivo cae a insercion individual para no duplicar lotes previos.
+                for params in lote:
+                    try:
+                        self.GestorDB._ejecutar(query_fila, params=params, commit=True)
+                        filas_exitosas += 1
+                    except Exception as row_error:
+                        filas_error += 1
+                        print(f"[ERROR][{tabla}] Fila fallida: {row_error}")
+                        print(f"[ERROR][{tabla}] Parametros: {params}")
+                        errores.append({
+                            "tabla": tabla,
+                            "mensaje": str(row_error),
+                            "params": params
+                        })
+
+            print(
+                f"[STAGING] {tabla}: {filas_exitosas + filas_error}/{len(registros)} filas procesadas"
+            )
 
         resumen = {
             "tabla": tabla,
@@ -144,7 +168,7 @@ class ETLs(ProcesadorEDA):
         )
 
     def clear_staging(self, chain=True):
-        """Vacía staging al inicio de una corrida completa del DW."""
+        """Vacia staging al inicio de una corrida completa del DW."""
         tablas = [
             "stg_hidrocarburos",
             "stg_distribucion",
@@ -315,29 +339,29 @@ class ETLs(ProcesadorEDA):
             ),
         }
 
-        conn = self.GestorDB._conectar()
         resumen = []
+        conn = self.GestorDB._conectar()
 
-        with conn.cursor() as cursor:
-            for archivo, (tabla, columnas_csv, columnas_sql) in catalogos.items():
-                # Los catalogos se reemplazan completos porque son diccionarios de referencia.
-                ruta = base_path / archivo
-                df_catalogo = pd.read_csv(ruta)
-                df_catalogo = df_catalogo[columnas_csv].where(pd.notna(df_catalogo[columnas_csv]), None)
-                registros = [tuple(fila) for fila in df_catalogo.itertuples(index=False, name=None)]
+        for archivo, (tabla, columnas_csv, columnas_sql) in catalogos.items():
+            # Los catalogos se reemplazan completos porque son diccionarios de referencia.
+            ruta = base_path / archivo
+            df_catalogo = pd.read_csv(ruta)
+            df_catalogo = df_catalogo[columnas_csv].where(pd.notna(df_catalogo[columnas_csv]), None)
+            registros = [tuple(fila) for fila in df_catalogo.itertuples(index=False, name=None)]
 
-                cursor.execute(f'TRUNCATE TABLE "Catalogo".{tabla};')
+            self.GestorDB._ejecutar(f'TRUNCATE TABLE "Catalogo".{tabla};', commit=True)
 
-                if registros:
-                    columnas_insert = ", ".join(columnas_sql)
-                    query = f'INSERT INTO "Catalogo".{tabla} ({columnas_insert}) VALUES %s'
-                    execute_values(cursor, query, registros)
+            if registros:
+                columnas_insert = ", ".join(columnas_sql)
+                query = f'INSERT INTO "Catalogo".{tabla} ({columnas_insert}) VALUES %s'
+                with conn.cursor() as cursor:
+                    execute_values(cursor, query, registros, page_size=self.batch_size)
+                conn.commit()
 
-                resumen.append({
-                    "tabla": tabla,
-                    "archivo": archivo,
-                    "filas_insertadas": len(registros)
-                })
+            resumen.append({
+                "tabla": tabla,
+                "archivo": archivo,
+                "filas_insertadas": len(registros)
+            })
 
-        conn.commit()
         return self._chain_response(resumen, chain)
