@@ -3,11 +3,13 @@
 -- ============================================
 
 DROP VIEW IF EXISTS "Fact_Dim".vw_dataset_final_2020_2025;
+DROP VIEW IF EXISTS "Fact_Dim".vw_dataset_final_2018_2025;
 
-CREATE VIEW "Fact_Dim".vw_dataset_final_2020_2025 AS
+CREATE VIEW "Fact_Dim".vw_dataset_final_2018_2025 AS
 SELECT
     tp.mes AS "Mes",
-    tp.anio AS "Año",
+    DATE_TRUNC('year', tp.fecha)::DATE AS "Año",
+    TO_CHAR(tp.fecha, 'YYYY') AS "Año Numero",
     e.nombre_empresa AS "Empresa",
     dt.nombre_tarifa AS "Tarifa",
     ft.abonados AS "Abonados",
@@ -50,6 +52,8 @@ INNER JOIN "Fact_Dim".dim_tarifa dt
 LEFT JOIN "Fact_Dim".vw_clima_empresas_mensual vcem
     ON vcem.nombre_empresa = e.nombre_empresa
    AND vcem.fecha_mes = tp.fecha
+WHERE tp.fecha >= DATE '2018-01-01'
+  AND tp.fecha < DATE '2026-01-01'
 ORDER BY
     tp.anio,
     tp.mes,

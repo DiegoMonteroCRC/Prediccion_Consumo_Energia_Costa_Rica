@@ -148,7 +148,10 @@ class GestorDBconn:
         """Ejecuta un archivo SQL completo dentro de la conexion activa."""
         conn = self._conectar()
         ruta_script = Path(ruta_script)
-        script = ruta_script.read_text(encoding="utf-8")
+        try:
+            script = ruta_script.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            script = ruta_script.read_text(encoding="cp1252")
 
         try:
             with conn.cursor() as cursor:

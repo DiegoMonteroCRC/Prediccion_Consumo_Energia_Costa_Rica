@@ -121,7 +121,7 @@ class CargadorDatos:
 
     def unificador_aresep_clima(self):
         """Flujo legado para generar clima crudo y unificar ARESEP + clima."""
-        ruta_clima = self.BASE_DIR / "data" / "raw" / "api" / "clima_nasa_2020_2025.csv"
+        ruta_clima = self.BASE_DIR / "data" / "raw" / "api" / "clima_nasa_2018_2025.csv"
 
         empresas = [
             "CNFL",
@@ -138,7 +138,7 @@ class CargadorDatos:
             print("No existe el archivo de clima. Descargando desde la API")
 
             cliente = self.ClienteAPI()
-            df_clima = cliente.obtener_todas_empresas(empresas, "2020", "2025")
+            df_clima = cliente.obtener_todas_empresas(empresas, "2018", "2025")
 
             print("\nDatos de clima descargados:")
             print(df_clima.head())

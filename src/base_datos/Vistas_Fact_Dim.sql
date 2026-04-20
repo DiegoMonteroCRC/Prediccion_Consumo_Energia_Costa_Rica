@@ -3,6 +3,7 @@
 -- ============================================
 
 DROP VIEW IF EXISTS "Fact_Dim".vw_dataset_final_2020_2025;
+DROP VIEW IF EXISTS "Fact_Dim".vw_dataset_final_2018_2025;
 DROP VIEW IF EXISTS "Fact_Dim".vw_ingresos_empresas_tarifas_mensual CASCADE;
 DROP VIEW IF EXISTS "Fact_Dim".vw_clima_empresas_mensual CASCADE;
 DROP VIEW IF EXISTS "Fact_Dim".vw_clima_centrales_mensual CASCADE;
@@ -13,7 +14,8 @@ CREATE VIEW "Fact_Dim".vw_clima_centrales_mensual AS
 SELECT
     e.nombre_empresa,
     tp.fecha AS fecha_mes,
-    tp.anio,
+    DATE_TRUNC('year', tp.fecha)::DATE AS fecha_anio,
+    TO_CHAR(tp.fecha, 'YYYY') AS anio,
     tp.mes,
     tp.nombre_mes,
     ce.id_objecto,
@@ -58,7 +60,8 @@ CREATE VIEW "Fact_Dim".vw_clima_empresas_mensual AS
 SELECT
     e.nombre_empresa,
     tp.fecha AS fecha_mes,
-    tp.anio,
+    DATE_TRUNC('year', tp.fecha)::DATE AS fecha_anio,
+    TO_CHAR(tp.fecha, 'YYYY') AS anio,
     tp.mes,
     tp.nombre_mes,
     COUNT(DISTINCT fc.central_key) AS centrales_con_clima,
@@ -208,8 +211,8 @@ tarifa_distribucion AS (
 SELECT
     tm.nombre_empresa,
     tm.fecha_mes,
-    MAKE_DATE(tm.anio, 1, 1) AS fecha_anio,
-    tm.anio,
+    DATE_TRUNC('year', tm.fecha_mes)::DATE AS fecha_anio,
+    tm.anio::VARCHAR(4) AS anio,
     tm.mes,
     tm.nombre_mes,
     tm.tarifa,

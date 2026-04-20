@@ -13,8 +13,8 @@ from time import perf_counter
 os.environ["PGDATABASE"] = "DW_Energia_ML"
 os.environ["PGUSER"] = "sa"
 os.environ["PGPASSWORD"] = "progra"
-os.environ["PGHOST"] = "34.136.178.175"
-#os.environ["PGPORT"] = "5433"
+#os.environ["PGHOST"] = "34.136.178.175"
+os.environ["PGPORT"] = "5433"
 
 
 CENTRO_COLUMNS = [
@@ -135,6 +135,7 @@ SQL_BOOTSTRAP_FILES = [
     "Vistas_Empresa_Centrales.sql",
     "Vistas_Fact_Dim.sql",
     "Vistas_Dataset_Final.sql",
+    "Vistas_Modelo_Predictivo.sql",
 ]
 
 
@@ -166,8 +167,8 @@ def sincronizar_objetos_sql():
 def exportar_dataset_final_desde_dw():
     """Exporta el dataset final desde la vista del DW al CSV procesado."""
     cargador = CargadorDatos()
-    cargador.sql_view_to_df("vw_dataset_final_2020_2025", schema="Fact_Dim")
-    cargador.save_df("processed/dataset_final_2020_2025", chain=False)
+    cargador.sql_view_to_df("vw_dataset_final_2018_2025", schema="Fact_Dim")
+    cargador.save_df("processed/dataset_final_2018_2025", chain=False)
 
 
 def preparar_centro(etl):
