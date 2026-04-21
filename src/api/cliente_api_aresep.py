@@ -115,8 +115,8 @@ class ClienteAPITarifasElectricidadDistribucion(_ClienteAPIAresepBase):
     def __init__(self):
         super().__init__(
             "TarifasElectricidad.svc/ObtenerTarifasElectricidadDistribucion",
-            2019,
-            2026,
+            2018,
+            2025,
         )
 
     def obtener_datos(self, chain=True):
@@ -163,8 +163,8 @@ class ClienteAPITarifasPreciosMedios(_ClienteAPIAresepBase):
     def __init__(self):
         super().__init__(
             "TarifasElectricidad.svc/ObtenerTarifasPreciosMedios",
-            2019,
-            2026,
+            2018,
+            2025,
         )
 
     def obtener_datos(self, chain=True):

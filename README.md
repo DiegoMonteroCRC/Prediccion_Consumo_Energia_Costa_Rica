@@ -712,7 +712,7 @@ La arquitectura del proyecto va de la siguente manera:
 
 - las APIs construyen DataFrames crudos
 - `ProcesadorEDA` y los notebooks los limpian
-- `ETLs` inserta cat√°logos y staging
+- `ETLs` inserta cat·logos y staging
 - `CargadorDatos.cargar_a_fact_dim()` transforma staging en un modelo dimensional
 
 Con esto se prepara el repositorio tanto para exploracion en notebooks como para una corrida ETL completa hacia PostgreSQL.

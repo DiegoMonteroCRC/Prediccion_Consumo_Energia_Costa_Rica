@@ -40,10 +40,10 @@ class GestorDatos:
             / "data"
             / "raw"
             / "api"
-            / "clima_NASA_unificado_centrales_electricas_2020-2025.csv"
+            / "clima_NASA_unificado_centrales_electricas_2018-2025.csv"
         )
         self.ruta_clima_legacy = (
-            self.base_dir / "data" / "raw" / "api" / "clima_nasa_2020_2025.csv"
+            self.base_dir / "data" / "raw" / "api" / "clima_nasa_2018_2025.csv"
         )
         self.ruta_centro = self._resolver_ruta_entrada(
             "Centro.csv",
@@ -51,7 +51,7 @@ class GestorDatos:
         )
         self.ruta_procesados = self.base_dir / "data" / "processed"
         self.ruta_raw = self.base_dir / "data" / "raw"
-        self.inicio_clima = "2020"
+        self.inicio_clima = "2018"
         self.fin_clima = "2025"
         self.cliente_clima = ClienteAPI(ruta_centro=self.ruta_centro)
 
@@ -78,6 +78,8 @@ class GestorDatos:
 
     @staticmethod
     def _normalizar_columna_ano(df: pd.DataFrame) -> pd.DataFrame:
+        if "AÃƒÂ±o" in df.columns and "AÃ±o" not in df.columns:
+            df = df.rename(columns={"AÃƒÂ±o": "AÃ±o"})
         if "AÃ±o" in df.columns and "Año" not in df.columns:
             df = df.rename(columns={"AÃ±o": "Año"})
         return df
@@ -245,8 +247,8 @@ class GestorDatos:
 
     def guardar_csv(self, df, nombre_archivo):
         destino_por_archivo = {
-            "aresep_unificado_2020_2025.csv": self.ruta_raw,
-            "dataset_final_2020_2025.csv": self.ruta_procesados,
+            "aresep_unificado_2018_2025.csv": self.ruta_raw,
+            "dataset_final_2018_2025.csv": self.ruta_procesados,
         }
         carpeta_destino = destino_por_archivo.get(nombre_archivo, self.ruta_procesados)
         carpeta_destino.mkdir(parents=True, exist_ok=True)
@@ -339,5 +341,5 @@ class GestorDatos:
         df_clima_analitico = self.cliente_clima.agregar_por_empresa_mes(df_clima_staging)
         df_final = self.unir_datos(df_aresep, df_clima_analitico)
 
-        self.guardar_csv(df_aresep, "aresep_unificado_2020_2025.csv")
+        self.guardar_csv(df_aresep, "aresep_unificado_2018_2025.csv")
         return df_aresep, df_clima_staging, df_final

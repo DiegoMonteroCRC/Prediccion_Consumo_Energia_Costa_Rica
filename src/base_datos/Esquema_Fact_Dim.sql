@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS "Fact_Dim".dim_empresa (
 
 -- ============================================
 -- DIMENSION TARIFA
--- Unifica cat√°logos usados por aresep_unificado y distribucion
+-- Unifica cat·logos usados por aresep_unificado y distribucion
 -- ============================================
 CREATE TABLE IF NOT EXISTS "Fact_Dim".dim_tarifa (
     tarifa_key               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
