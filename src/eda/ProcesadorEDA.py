@@ -11,6 +11,10 @@ class ProcesadorEDA(CargadorDatos):
 
     def __init__(self):
         super().__init__()
+        self.columnas_texto = []
+        self.columnas_numericas = []
+        self.df_texto = None
+        self.df_numericas = None
 
     def rm_col(self, *args, chain=True, **kwargs):
         """Elimina columnas o ejes completos y refresca metricas del dataset."""
@@ -196,6 +200,40 @@ class ProcesadorEDA(CargadorDatos):
             resultado = self.df.select_dtypes(include=[np.number]).copy()
         else:
             resultado = self.df.select_dtypes(exclude=[np.number]).copy()
+        return self._chain_response(resultado, chain)
+
+    def separar_columnas_texto_numericas(self, chain=True):
+        """Separa self.df en columnas con texto y columnas sin texto."""
+        if self.df is None:
+            raise ValueError("No hay DataFrame cargado en self.df.")
+
+        columnas_texto = []
+        columnas_numericas = []
+
+        for columna in self.df.columns:
+            serie_original = self.df[columna].dropna()
+
+            if serie_original.empty:
+                continue
+
+            tiene_texto = serie_original.map(lambda valor: isinstance(valor, str)).any()
+
+            if tiene_texto:
+                columnas_texto.append(columna)
+            else:
+                columnas_numericas.append(columna)
+
+        self.columnas_texto = columnas_texto
+        self.columnas_numericas = columnas_numericas
+        self.df_texto = self.df[columnas_texto].copy()
+        self.df_numericas = self.df[columnas_numericas].copy()
+
+        resultado = self.param_get() | {
+            "columnas_texto": self.columnas_texto,
+            "columnas_numericas": self.columnas_numericas,
+            "df_texto": self.df_texto,
+            "df_numericas": self.df_numericas,
+        }
         return self._chain_response(resultado, chain)
 
     def res_descrip(self, columnas: list, chain=False, *args, **kwargs):

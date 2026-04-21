@@ -3,11 +3,12 @@
 -- ============================================
 
 DROP VIEW IF EXISTS "Fact_Dim".vw_modelo_predictivo_central_tarifa_mensual CASCADE;
+DROP VIEW IF EXISTS "Fact_Dim".prediccion_precio_mes CASCADE;
 
 -- La vista conserva el grano mensual por empresa + sistema + tarifa
 -- + descripcion_tarifa + central para exponer una fila unica por
 -- serie visible, sin depender de tipo_tarifa ni bloque_consumo.
-CREATE VIEW "Fact_Dim".vw_modelo_predictivo_central_tarifa_mensual AS
+CREATE VIEW "Fact_Dim".prediccion_precio_mes AS
 WITH ingresos_modelo AS (
     SELECT
         it.fecha_anio,
@@ -231,7 +232,7 @@ SELECT
     ingreso_con_cvg,
     precio_medio_sin_cvg,
     precio_medio_con_cvg,
-    pago_promedio_cliente_tarifa,
+    pago_promedio_cliente_tarifa AS empresa_mes_tarifa_crc_promedio,
     t2m,
     ws10m,
     cloud_amt,

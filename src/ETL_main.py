@@ -161,7 +161,7 @@ def sincronizar_objetos_sql():
     for archivo in SQL_BOOTSTRAP_FILES:
         ruta = base_sql / archivo
         print(f"[INICIO] Sincronizando SQL: {archivo}...")
-        gestor._ejecutar_script_sql(ruta)
+        gestor.ejecutar_script_sql(ruta)
 
 
 def exportar_dataset_final_desde_dw():

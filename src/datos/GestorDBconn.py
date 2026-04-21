@@ -107,7 +107,7 @@ class GestorDBconn:
             conn.rollback()
             raise
 
-    def _consultar(self, query, params=None):
+    def consultar(self, query, params=None):
         """Ejecuta un SELECT y devuelve el resultado como DataFrame."""
         conn = self._conectar()
         try:
@@ -120,7 +120,9 @@ class GestorDBconn:
             raise
         return pd.DataFrame(datos, columns=columnas)
 
-    def _ejecutar_funcion(self, nombre_funcion, params=None, schema="public", multiple_rows=False, commit=False):
+    _consultar = consultar
+
+    def ejecutar_funcion(self, nombre_funcion, params=None, schema="public", multiple_rows=False, commit=False):
         """Invoca funciones SQL del proyecto y adapta su salida a pandas/dict."""
         # Las funciones se consumen como SELECT para recuperar su confirmacion de carga.
         params = params or ()
@@ -129,7 +131,7 @@ class GestorDBconn:
         conn = self._conectar()
 
         try:
-            resultado = self._consultar(query, params)
+            resultado = self.consultar(query, params)
             if commit:
                 conn.commit()
         except Exception:
@@ -144,7 +146,9 @@ class GestorDBconn:
 
         return resultado.iloc[0].to_dict()
 
-    def _ejecutar_script_sql(self, ruta_script):
+    _ejecutar_funcion = ejecutar_funcion
+
+    def ejecutar_script_sql(self, ruta_script):
         """Ejecuta un archivo SQL completo dentro de la conexion activa."""
         conn = self._conectar()
         ruta_script = Path(ruta_script)
@@ -160,6 +164,8 @@ class GestorDBconn:
         except Exception:
             conn.rollback()
             raise
+
+    _ejecutar_script_sql = ejecutar_script_sql
 
     def __enter__(self):
         self._conectar()
