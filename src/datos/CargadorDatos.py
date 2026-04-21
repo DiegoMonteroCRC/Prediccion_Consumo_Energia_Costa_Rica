@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+import joblib
 import pandas as pd
 
 from datos.gestor_datos_aresep_clima import GestorDatos
@@ -69,13 +70,13 @@ class CargadorDatos:
     def sql_table_to_df(self, nombre_tabla: str, schema="public", chain=True):
         """Trae una tabla SQL completa para reutilizarla como DataFrame."""
         query = f'SELECT * FROM "{schema}"."{nombre_tabla}";'
-        self.__df = self.GestorDB._consultar(query)
+        self.__df = self.GestorDB.consultar(query)
         return self._chain_response(self.param_set(), chain)
 
     def sql_view_to_df(self, nombre_vista: str, schema="public", chain=True):
         """Trae una vista SQL completa para analisis o reprocesamiento."""
         query = f'SELECT * FROM "{schema}"."{nombre_vista}";'
-        self.__df = self.GestorDB._consultar(query)
+        self.__df = self.GestorDB.consultar(query)
         return self._chain_response(self.param_set(), chain)
 
     def param_set(self) -> dict:
@@ -108,10 +109,32 @@ class CargadorDatos:
             return self
         return None
 
+    def save_model(self, nombre, modelo=None, metadata=None, chain=True):
+        """Guarda un modelo o payload de modelos dentro de src/modelos."""
+        if modelo is None:
+            modelo = getattr(self, "modelo", None)
+
+        if modelo is None:
+            raise ValueError("No hay modelo para guardar.")
+
+        metadata = metadata or {}
+        payload = {
+            "modelo": modelo,
+            **metadata,
+        }
+
+        nombre_archivo = nombre if str(nombre).endswith(".joblib") else f"{nombre}.joblib"
+        ruta = self.BASE_DIR / "src" / "modelos" / nombre_archivo
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(payload, ruta)
+
+        resultado = {"ok": True, "ruta": str(ruta), "payload": payload}
+        return self._chain_response(resultado, chain)
+
     def cargar_a_fact_dim(self, chain=True):
         """Dispara la carga del DW leyendo lo que ya existe en staging."""
         # La funcion SQL centraliza la logica de poblar dimensiones y hechos desde staging.
-        resultado = self.GestorDB._ejecutar_funcion(
+        resultado = self.GestorDB.ejecutar_funcion(
             "fn_cargar_a_fact_dim",
             schema="Fact_Dim",
             multiple_rows=True,
